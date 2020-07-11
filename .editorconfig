@@ -1,20 +1,21 @@
 root = true
 
 [*]
+indent_style = space
 end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
 [*.py]
 max_line_length = 88
-indent_style = space
 indent_size = 4
 
 [*.md]
 max_line_length = 88
-indent_style = space
 indent_size = 4
 
 [*.rst]
-indent_style = space
 indent_size = 3
+
+[*.html]
+indent_size = 4
