@@ -5,7 +5,7 @@ from abc import ABC
 from collections import abc
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, List, Union
+from typing import Iterator, List, Union, Optional
 
 import numpy as np
 
@@ -17,6 +17,7 @@ class Timestep:
     reward: float
     done: bool
     info: dict
+    attributations: Optional[np.ndarray] = None
 
     @staticmethod
     def from_trajectory_index(
@@ -42,6 +43,7 @@ class Trajectory(abc.Iterable, abc.Sized):
     reward: np.ndarray
     done: np.ndarray
     info: List[dict]
+    attributations: Optional[np.ndarray] = None
 
     def __getitem__(self, item: int) -> Timestep:
         return Timestep.from_trajectory_index(
