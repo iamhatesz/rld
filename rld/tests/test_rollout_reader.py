@@ -9,14 +9,10 @@ from rld.rollout import RayRolloutReader
 class TestRolloutReader(unittest.TestCase):
     def test_ray_flat_observation(self):
         rollout = RayRolloutReader(
-            Path(__file__).parent / "resources" / "cartpole.ray_rollout"
+            Path(__file__).parent / "resources" / "rollouts" / "cartpole.ray_rollout"
         )
         for trajectory in rollout:
-            self.assertIsInstance(trajectory.obs, list)
-            self.assertIsInstance(trajectory.action, list)
-            self.assertIsInstance(trajectory.reward, list)
-            self.assertIsInstance(trajectory.done, list)
-            self.assertIsInstance(trajectory.info, list)
+            self.assertIsInstance(trajectory.timesteps, list)
 
             for timestep in trajectory:
                 self.assertIsInstance(timestep.obs, np.ndarray)
@@ -27,14 +23,10 @@ class TestRolloutReader(unittest.TestCase):
 
     def test_ray_image_observation(self):
         rollout = RayRolloutReader(
-            Path(__file__).parent / "resources" / "pong.ray_rollout"
+            Path(__file__).parent / "resources" / "rollouts" / "pong.ray_rollout"
         )
         for trajectory in rollout:
-            self.assertIsInstance(trajectory.obs, list)
-            self.assertIsInstance(trajectory.action, list)
-            self.assertIsInstance(trajectory.reward, list)
-            self.assertIsInstance(trajectory.done, list)
-            self.assertIsInstance(trajectory.info, list)
+            self.assertIsInstance(trajectory.timesteps, list)
 
             for timestep in trajectory:
                 self.assertIsInstance(timestep.obs, np.ndarray)
@@ -45,14 +37,10 @@ class TestRolloutReader(unittest.TestCase):
 
     def test_ray_dict_observation(self):
         rollout = RayRolloutReader(
-            Path(__file__).parent / "resources" / "custom_env.ray_rollout"
+            Path(__file__).parent / "resources" / "rollouts" / "custom_env.ray_rollout"
         )
         for trajectory in rollout:
-            self.assertIsInstance(trajectory.obs, list)
-            self.assertIsInstance(trajectory.action, list)
-            self.assertIsInstance(trajectory.reward, list)
-            self.assertIsInstance(trajectory.done, list)
-            self.assertIsInstance(trajectory.info, list)
+            self.assertIsInstance(trajectory.timesteps, list)
 
             for timestep in trajectory:
                 self.assertIsInstance(timestep.obs, dict)
