@@ -6,7 +6,7 @@ import numpy as np
 from rld.rollout import RayRolloutReader
 
 
-class TestRollout(unittest.TestCase):
+class TestRolloutReader(unittest.TestCase):
     def test_ray_flat_observation(self):
         rollout = RayRolloutReader(
             Path(__file__).parent / "resources" / "cartpole.ray_rollout"
