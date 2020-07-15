@@ -87,6 +87,19 @@ class RolloutIterator:
         raise NotImplementedError
 
 
+class FromMemoryRolloutReader(RolloutReader, RolloutIterator):
+    def __init__(self, rollout: Rollout):
+        self.rollout = rollout
+        self._it = None
+
+    def __iter__(self) -> RolloutIterator:
+        self._it = iter(self.rollout.trajectories)
+        return self
+
+    def __next__(self) -> Trajectory:
+        return next(self._it)
+
+
 class RayRolloutReader(RolloutReader, RolloutIterator):
     def __init__(self, rollout: Path):
         self.rollout = shelve.open(str(rollout))
