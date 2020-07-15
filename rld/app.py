@@ -7,7 +7,7 @@ from captum.attr import IntegratedGradients
 from flask import Flask, render_template
 from ray.rllib.agents.ppo import PPOTrainer
 
-from rld.wrappers import RayToCaptumModelWrapper
+from rld.wrappers import RayModelWrapper
 
 app = Flask(__name__, template_folder="ui", static_folder="ui/static")
 
@@ -22,7 +22,7 @@ def index():
         trainer = PPOTrainer(config=params)
         trainer.restore(checkpoint_path)
         policy = trainer.get_policy()
-        model = RayToCaptumModelWrapper(policy.model)
+        model = RayModelWrapper(policy.model)
         model.eval()
         ray.shutdown()
         return model

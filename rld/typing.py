@@ -1,28 +1,15 @@
-from typing import Union, Mapping, Sequence
+from typing import Union, Mapping, Sequence, Callable
 
 import numpy as np
 import torch
 
 ObsLike = Union[np.ndarray, Mapping[str, np.ndarray]]
+ObsLikeStrict = np.ndarray
 ObsBatchLike = Sequence[ObsLike]
 ObsBatchLikeStrict = Sequence[np.ndarray]
 
-
-def is_obs_dict(obs: Union[ObsLike, ObsBatchLike]) -> bool:
-    if isinstance(obs, dict):
-        return True
-    return False
-
-
 ActionLike = Union[int, np.ndarray]
 ActionBatchLike = Sequence[ActionLike]
-
-
-def is_action_array(action: ActionLike) -> bool:
-    if isinstance(action, np.ndarray):
-        return True
-    return False
-
 
 RewardLike = float
 RewardBatchLike = Sequence[RewardLike]
@@ -33,3 +20,9 @@ DoneBatchLike = Sequence[DoneLike]
 InfoValueLike = Union[str, int, float, bool, np.ndarray]
 InfoLike = Mapping[str, InfoValueLike]
 InfoBatchLike = Sequence[InfoLike]
+
+AttributationLike = Union[np.ndarray, Mapping[str, np.ndarray]]
+AttributationLikeStrict = torch.Tensor
+AttributationBatchLike = Sequence[AttributationLike]
+
+BaselineBuilder = Callable[[], np.ndarray]

@@ -1,11 +1,10 @@
-import torch.nn as nn
-from ray.rllib.models.preprocessors import Preprocessor
+import torch
 
-from rld.typing import ObsBatchLike, ObsBatchLikeStrict
+from rld.model import Model, RayModel
 
 
-class RayToCaptumModelWrapper(nn.Module):
-    def __init__(self, model):
+class RayModelWrapper(Model):
+    def __init__(self, model: RayModel):
         super().__init__()
         self.model = model
 
@@ -18,11 +17,5 @@ class RayToCaptumModelWrapper(nn.Module):
         seq_lens = None
         return self.model(input_dict, state, seq_lens)[0]
 
-
-# Rollout/Trajectory/Timestep/obs -> flatten -> Captum -> forward -> dictify -> output for flatten -> output for dictify
-
-
-def preprocess_obs(
-    obss: ObsBatchLike, preprocessor: Preprocessor
-) -> ObsBatchLikeStrict:
-    return [preprocessor.transform(obs) for obs in obss]
+    def input_device(self) -> torch.device:
+        return next(self.model.parameters()).device

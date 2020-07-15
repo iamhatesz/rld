@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import shelve
-from abc import ABC
 from collections import abc
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,14 +11,10 @@ import numpy as np
 from rld.typing import (
     ObsLike,
     RewardLike,
-    ObsBatchLike,
-    RewardBatchLike,
     DoneLike,
-    DoneBatchLike,
     ActionLike,
     InfoLike,
-    ActionBatchLike,
-    InfoBatchLike,
+    AttributationLike,
 )
 
 _BATCH_DIM = 0
@@ -32,26 +27,28 @@ class Timestep:
     reward: RewardLike
     done: DoneLike
     info: InfoLike
-    attributations: Optional[np.ndarray] = None
+    attributations: Optional[AttributationLike] = None
 
 
 @dataclass
 class Trajectory(abc.Iterable, abc.Sized):
-    obs: ObsBatchLike
-    action: ActionBatchLike
-    reward: RewardBatchLike
-    done: DoneBatchLike
-    info: InfoBatchLike
-    attributations: Optional[np.ndarray] = None
+    timesteps: Sequence[Timestep]
+    # obs: ObsBatchLike
+    # action: ActionBatchLike
+    # reward: RewardBatchLike
+    # done: DoneBatchLike
+    # info: InfoBatchLike
+    # attributations: Optional[AttributationBatchLike] = None
 
     # Right now we only support single timestep retrieval
     def __getitem__(self, item: int) -> Timestep:
         return Timestep(
-            obs=self.obs[item],
-            action=self.action[item],
-            reward=self.reward[item],
-            done=self.done[item],
-            info=self.info[item],
+            obs=self.timesteps[item].obs,
+            action=self.timesteps[item].action,
+            reward=self.timesteps[item].reward,
+            done=self.timesteps[item].done,
+            info=self.timesteps[item].info,
+            attributations=self.timesteps[item].attributations,
         )
 
     def __iter__(self) -> Iterator[Trajectory]:
@@ -73,9 +70,6 @@ class TrajectoryIterator(abc.Iterator):
             return timestep
         except IndexError:
             raise StopIteration
-
-
-Episode = Trajectory
 
 
 @dataclass
@@ -112,11 +106,16 @@ class RayRolloutReader(RolloutReader, RolloutIterator):
             raise StopIteration
         self.n += 1
         return Trajectory(
-            obs=[ts[0] for ts in trajectory],
-            action=[to_int_if_scalar(ts[1]) for ts in trajectory],
-            reward=[float(ts[3]) for ts in trajectory],
-            done=[bool(ts[4]) for ts in trajectory],
-            info=[ts[5] if len(ts) == 6 else {} for ts in trajectory],
+            timesteps=[
+                Timestep(
+                    obs=ts[0],
+                    action=to_int_if_scalar(ts[1]),
+                    reward=float(ts[3]),
+                    done=bool(ts[4]),
+                    info=ts[5] if len(ts) == 6 else {},
+                )
+                for ts in trajectory
+            ]
         )
 
 
