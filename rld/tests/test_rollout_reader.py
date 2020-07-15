@@ -1,4 +1,5 @@
 import unittest
+from importlib import resources
 from pathlib import Path
 
 import numpy as np
@@ -8,9 +9,10 @@ from rld.rollout import RayRolloutReader
 
 class TestRolloutReader(unittest.TestCase):
     def test_ray_flat_observation(self):
-        rollout = RayRolloutReader(
-            Path(__file__).parent / "resources" / "rollouts" / "cartpole.ray_rollout"
-        )
+        with resources.path(
+            "rld.tests.resources.rollouts", "cartpole.ray_rollout"
+        ) as f:
+            rollout = RayRolloutReader(Path(f))
         for trajectory in rollout:
             self.assertIsInstance(trajectory.timesteps, list)
 
@@ -22,9 +24,8 @@ class TestRolloutReader(unittest.TestCase):
                 self.assertIsInstance(timestep.info, dict)
 
     def test_ray_image_observation(self):
-        rollout = RayRolloutReader(
-            Path(__file__).parent / "resources" / "rollouts" / "pong.ray_rollout"
-        )
+        with resources.path("rld.tests.resources.rollouts", "pong.ray_rollout") as f:
+            rollout = RayRolloutReader(Path(f))
         for trajectory in rollout:
             self.assertIsInstance(trajectory.timesteps, list)
 
@@ -36,9 +37,10 @@ class TestRolloutReader(unittest.TestCase):
                 self.assertIsInstance(timestep.info, dict)
 
     def test_ray_dict_observation(self):
-        rollout = RayRolloutReader(
-            Path(__file__).parent / "resources" / "rollouts" / "custom_env.ray_rollout"
-        )
+        with resources.path(
+            "rld.tests.resources.rollouts", "custom_env.ray_rollout"
+        ) as f:
+            rollout = RayRolloutReader(Path(f))
         for trajectory in rollout:
             self.assertIsInstance(trajectory.timesteps, list)
 
