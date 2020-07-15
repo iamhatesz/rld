@@ -5,7 +5,7 @@ from abc import ABC
 from collections import abc
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Optional, Any
+from typing import Iterator, Optional, Any, Sequence
 
 import numpy as np
 
@@ -78,26 +78,28 @@ class TrajectoryIterator(abc.Iterator):
 Episode = Trajectory
 
 
-class Rollout(ABC):
-    @property
-    def num_episodes(self) -> int:
+@dataclass
+class Rollout:
+    trajectories: Sequence[Trajectory]
+
+
+class RolloutReader:
+    def __iter__(self) -> RolloutIterator:
         raise NotImplementedError
 
-    def __iter__(self) -> Iterator[Trajectory]:
+
+class RolloutIterator:
+    def __next__(self) -> Trajectory:
         raise NotImplementedError
 
 
-class RayRollout(Rollout):
+class RayRolloutReader(RolloutReader, RolloutIterator):
     def __init__(self, rollout: Path):
         self.rollout = shelve.open(str(rollout))
         self.n = 0
 
     def __del__(self):
         self.rollout.close()
-
-    @property
-    def num_episodes(self) -> int:
-        return self.rollout["num_episodes"]
 
     def __iter__(self) -> Iterator[Trajectory]:
         self.n = 0

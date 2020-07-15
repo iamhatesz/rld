@@ -3,18 +3,15 @@ from pathlib import Path
 
 import numpy as np
 
-from rld.rollout import RayRollout
+from rld.rollout import RayRolloutReader
 
 
 class TestRollout(unittest.TestCase):
     def test_ray_flat_observation(self):
-        rollout = RayRollout(
+        rollout = RayRolloutReader(
             Path(__file__).parent / "resources" / "cartpole.ray_rollout"
         )
-        self.assertGreater(rollout.num_episodes, 0)
         for trajectory in rollout:
-            self.assertGreater(len(trajectory), 0)
-
             self.assertIsInstance(trajectory.obs, list)
             self.assertIsInstance(trajectory.action, list)
             self.assertIsInstance(trajectory.reward, list)
@@ -29,11 +26,10 @@ class TestRollout(unittest.TestCase):
                 self.assertIsInstance(timestep.info, dict)
 
     def test_ray_image_observation(self):
-        rollout = RayRollout(Path(__file__).parent / "resources" / "pong.ray_rollout")
-        self.assertGreater(rollout.num_episodes, 0)
+        rollout = RayRolloutReader(
+            Path(__file__).parent / "resources" / "pong.ray_rollout"
+        )
         for trajectory in rollout:
-            self.assertGreater(len(trajectory), 0)
-
             self.assertIsInstance(trajectory.obs, list)
             self.assertIsInstance(trajectory.action, list)
             self.assertIsInstance(trajectory.reward, list)
@@ -48,13 +44,10 @@ class TestRollout(unittest.TestCase):
                 self.assertIsInstance(timestep.info, dict)
 
     def test_ray_dict_observation(self):
-        rollout = RayRollout(
+        rollout = RayRolloutReader(
             Path(__file__).parent / "resources" / "custom_env.ray_rollout"
         )
-        self.assertGreater(rollout.num_episodes, 0)
         for trajectory in rollout:
-            self.assertGreater(len(trajectory), 0)
-
             self.assertIsInstance(trajectory.obs, list)
             self.assertIsInstance(trajectory.action, list)
             self.assertIsInstance(trajectory.reward, list)
