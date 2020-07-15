@@ -1,10 +1,11 @@
 from typing import Union, Mapping, Sequence
 
 import numpy as np
-
+import torch
 
 ObsLike = Union[np.ndarray, Mapping[str, np.ndarray]]
-ObsBatchLike = Union[np.ndarray, Mapping[str, np.ndarray]]
+ObsBatchLike = Sequence[ObsLike]
+ObsBatchLikeStrict = Sequence[np.ndarray]
 
 
 def is_obs_dict(obs: Union[ObsLike, ObsBatchLike]) -> bool:
@@ -14,7 +15,7 @@ def is_obs_dict(obs: Union[ObsLike, ObsBatchLike]) -> bool:
 
 
 ActionLike = Union[int, np.ndarray]
-ActionBatchLike = np.ndarray
+ActionBatchLike = Sequence[ActionLike]
 
 
 def is_action_array(action: ActionLike) -> bool:
@@ -24,10 +25,10 @@ def is_action_array(action: ActionLike) -> bool:
 
 
 RewardLike = float
-RewardBatchLike = np.ndarray
+RewardBatchLike = Sequence[RewardLike]
 
 DoneLike = bool
-DoneBatchLike = np.ndarray
+DoneBatchLike = Sequence[DoneLike]
 
 InfoValueLike = Union[str, int, float, bool, np.ndarray]
 InfoLike = Mapping[str, InfoValueLike]

@@ -15,10 +15,10 @@ class TestRollout(unittest.TestCase):
         for trajectory in rollout:
             self.assertGreater(len(trajectory), 0)
 
-            self.assertIsInstance(trajectory.obs, np.ndarray)
-            self.assertIsInstance(trajectory.action, np.ndarray)
-            self.assertIsInstance(trajectory.reward, np.ndarray)
-            self.assertIsInstance(trajectory.done, np.ndarray)
+            self.assertIsInstance(trajectory.obs, list)
+            self.assertIsInstance(trajectory.action, list)
+            self.assertIsInstance(trajectory.reward, list)
+            self.assertIsInstance(trajectory.done, list)
             self.assertIsInstance(trajectory.info, list)
 
             for timestep in trajectory:
@@ -34,10 +34,10 @@ class TestRollout(unittest.TestCase):
         for trajectory in rollout:
             self.assertGreater(len(trajectory), 0)
 
-            self.assertIsInstance(trajectory.obs, np.ndarray)
-            self.assertIsInstance(trajectory.action, np.ndarray)
-            self.assertIsInstance(trajectory.reward, np.ndarray)
-            self.assertIsInstance(trajectory.done, np.ndarray)
+            self.assertIsInstance(trajectory.obs, list)
+            self.assertIsInstance(trajectory.action, list)
+            self.assertIsInstance(trajectory.reward, list)
+            self.assertIsInstance(trajectory.done, list)
             self.assertIsInstance(trajectory.info, list)
 
             for timestep in trajectory:
@@ -55,10 +55,10 @@ class TestRollout(unittest.TestCase):
         for trajectory in rollout:
             self.assertGreater(len(trajectory), 0)
 
-            self.assertIsInstance(trajectory.obs, dict)
-            self.assertIsInstance(trajectory.action, np.ndarray)
-            self.assertIsInstance(trajectory.reward, np.ndarray)
-            self.assertIsInstance(trajectory.done, np.ndarray)
+            self.assertIsInstance(trajectory.obs, list)
+            self.assertIsInstance(trajectory.action, list)
+            self.assertIsInstance(trajectory.reward, list)
+            self.assertIsInstance(trajectory.done, list)
             self.assertIsInstance(trajectory.info, list)
 
             for timestep in trajectory:
