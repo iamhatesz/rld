@@ -82,7 +82,7 @@ class AttributationTrajectoryIterator(abc.Iterator):
         )
 
         # Temporarily use only first sub-action in case of MultiDiscrete action space
-        if target.size(1) > 1:
+        if target.ndim > 1 and target.size(1) > 1:
             target = target[:, 0]
 
         return TimestepBatch(

@@ -51,7 +51,7 @@ class Trajectory(abc.Iterable, abc.Sized):
             attributations=self.timesteps[item].attributations,
         )
 
-    def __iter__(self) -> Iterator[Trajectory]:
+    def __iter__(self) -> Iterator[Timestep]:
         return TrajectoryIterator(self)
 
     def __len__(self) -> int:
