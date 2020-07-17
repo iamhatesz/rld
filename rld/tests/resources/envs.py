@@ -23,14 +23,19 @@ class BaseEnv(gym.Env):
         pass
 
 
-class VectorObsDiscreteActionEnv(BaseEnv):
+class BoxObsDiscreteActionEnv(BaseEnv):
     observation_space = gym.spaces.Box(-1, 1, shape=(6,))
     action_space = gym.spaces.Discrete(4)
 
 
-class VectorObsMultiDiscreteActionEnv(BaseEnv):
+class BoxObsMultiDiscreteActionEnv(BaseEnv):
     observation_space = gym.spaces.Box(-1, 1, shape=(6,))
     action_space = gym.spaces.MultiDiscrete([4, 2])
+
+
+class BoxObsTupleActionEnv(BaseEnv):
+    observation_space = gym.spaces.Box(-1, 1, shape=(6,))
+    action_space = gym.spaces.Tuple((gym.spaces.Discrete(2), gym.spaces.Discrete(2)))
 
 
 class ImageObsDiscreteActionEnv(BaseEnv):
@@ -41,6 +46,11 @@ class ImageObsDiscreteActionEnv(BaseEnv):
 class ImageObsMultiDiscreteActionEnv(BaseEnv):
     observation_space = gym.spaces.Box(-1, 1, shape=(84, 84, 4))
     action_space = gym.spaces.MultiDiscrete([4, 2])
+
+
+class ImageObsTupleActionEnv(BaseEnv):
+    observation_space = gym.spaces.Box(-1, 1, shape=(84, 84, 4))
+    action_space = gym.spaces.Tuple((gym.spaces.Discrete(2), gym.spaces.Discrete(2)))
 
 
 class DictObsDiscreteActionEnv(BaseEnv):
@@ -57,13 +67,23 @@ class DictObsMultiDiscreteActionEnv(BaseEnv):
     action_space = gym.spaces.MultiDiscrete([4, 2])
 
 
+class DictObsTupleActionEnv(BaseEnv):
+    observation_space = gym.spaces.Dict(
+        a=gym.spaces.Box(-1, 1, (4, 6)), b=gym.spaces.Box(-1, 1, (2,))
+    )
+    action_space = gym.spaces.Tuple((gym.spaces.Discrete(2), gym.spaces.Discrete(2)))
+
+
 ALL_ENVS = [
-    VectorObsDiscreteActionEnv,
-    VectorObsMultiDiscreteActionEnv,
+    BoxObsDiscreteActionEnv,
+    BoxObsMultiDiscreteActionEnv,
+    BoxObsTupleActionEnv,
     ImageObsDiscreteActionEnv,
     ImageObsMultiDiscreteActionEnv,
+    ImageObsTupleActionEnv,
     DictObsDiscreteActionEnv,
     DictObsMultiDiscreteActionEnv,
+    DictObsTupleActionEnv,
 ]
 
 
