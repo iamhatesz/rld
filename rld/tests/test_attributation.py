@@ -60,3 +60,8 @@ class TestAttributation(unittest.TestCase):
 
                         for timestep in attr_trajectory:
                             self.assertIsNotNone(timestep.attributations)
+                            self.assertTrue(
+                                env_fn.observation_space.contains(
+                                    timestep.attributations
+                                )
+                            )
