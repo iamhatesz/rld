@@ -103,7 +103,6 @@ def attribute_trajectory(
             timestep.obs, baselines=timestep.baseline, target=timestep.target
         )
         final_attr = trajectory_it.attr_postprocessor.transform(attr)
-        # TODO Flatten batch dim
         timesteps.append(replace(timestep.origin, attributations=final_attr))
 
     return Trajectory(timesteps)
