@@ -19,6 +19,7 @@ from rld.rollout import (
     Timestep,
     DiscreteActionAttributation,
     MultiDiscreteActionAttributation,
+    TupleActionAttributation,
 )
 from rld.typing import BaselineBuilder, ObsLike
 
@@ -111,7 +112,19 @@ class AttributationTrajectoryIterator(abc.Iterator):
             offset[0] = 0
             target = target + offset
         elif isinstance(self.model.action_space(), gym.spaces.Tuple):
-            raise NotImplementedError
+            space_sizes = [space.n for space in self.model.action_space().spaces]
+            num_spaces = len(space_sizes)
+            num_obs_dims = len(self.model.obs_space().shape)
+
+            repeat_shape = (num_spaces, *(1 for _ in range(num_obs_dims)))
+            inputs = inputs.repeat(repeat_shape)
+            baselines = baselines.repeat(repeat_shape)
+
+            offset = torch.tensor(space_sizes, device=self.model.output_device()).roll(
+                1
+            )
+            offset[0] = 0
+            target = target + offset
         else:
             raise ActionSpaceNotSupported(self.model.action_space())
 
@@ -150,7 +163,14 @@ def attribute_trajectory(
                 ]
             )
         elif isinstance(model.action_space(), gym.spaces.Tuple):
-            raise NotImplementedError
+            attributation = TupleActionAttributation(
+                [
+                    _convert_to_original_dimensions(
+                        model.obs_space(), action_attributation.unsqueeze(0),
+                    )
+                    for action_attributation in raw_attributation
+                ]
+            )
         else:
             raise ActionSpaceNotSupported(model.action_space())
 
