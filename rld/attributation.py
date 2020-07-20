@@ -38,11 +38,11 @@ class AttributationTarget(IntEnum):
 
 
 @dataclass
-class TimestepBatch:
+class TimestepAttributationBatch:
     inputs: torch.Tensor
     baselines: torch.Tensor
     target: torch.Tensor
-    origin: Timestep
+    timestep: Timestep
 
 
 class AttributationTrajectoryIterator(abc.Iterator):
@@ -63,7 +63,7 @@ class AttributationTrajectoryIterator(abc.Iterator):
         self.target = target
         self._it = iter(self.trajectory)
 
-    def __next__(self) -> TimestepBatch:
+    def __next__(self) -> TimestepAttributationBatch:
         try:
             timestep = next(self._it)
         except StopIteration:
@@ -120,8 +120,8 @@ class AttributationTrajectoryIterator(abc.Iterator):
         else:
             raise ActionSpaceNotSupported(self.model.action_space())
 
-        return TimestepBatch(
-            inputs=inputs, baselines=baselines, target=target, origin=timestep,
+        return TimestepAttributationBatch(
+            inputs=inputs, baselines=baselines, target=target, timestep=timestep,
         )
 
 
@@ -133,9 +133,9 @@ def attribute_trajectory(
 ) -> Trajectory:
     algo = IntegratedGradients(model)
     timesteps = []
-    for timestep in trajectory_it:
+    for batch in trajectory_it:
         raw_attributation = algo.attribute(
-            timestep.inputs, baselines=timestep.baselines, target=timestep.target
+            batch.inputs, baselines=batch.baselines, target=batch.target
         )
 
         if isinstance(model.action_space(), gym.spaces.Discrete):
@@ -159,7 +159,7 @@ def attribute_trajectory(
         else:
             raise ActionSpaceNotSupported(model.action_space())
 
-        timesteps.append(replace(timestep.origin, attributations=attributation))
+        timesteps.append(replace(batch.timestep, attributations=attributation))
 
     return Trajectory(timesteps)
 
