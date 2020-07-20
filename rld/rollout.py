@@ -60,7 +60,12 @@ class TupleActionAttributation(ActionAttributation):
     data: Sequence[AttributationLike]
 
     def is_complied(self, obs_space: gym.Space) -> bool:
-        raise NotImplementedError
+        return all(
+            [obs_space.contains(self.space(i)) for i in range(self.num_spaces())]
+        )
+
+    def num_spaces(self) -> int:
+        return len(self.data)
 
     def space(self, index: int) -> AttributationLike:
         return self.data[index]

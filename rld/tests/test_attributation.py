@@ -3,7 +3,6 @@ import unittest
 import ray
 from ray.rllib.agents.pg import PGTrainer
 from ray.rllib.agents.ppo import PPOTrainer
-from ray.rllib.models.preprocessors import get_preprocessor
 
 from rld.attributation import (
     AttributationTrajectoryIterator,

@@ -19,6 +19,7 @@ from rld.rollout import (
     Timestep,
     DiscreteActionAttributation,
     MultiDiscreteActionAttributation,
+    TupleActionAttributation,
 )
 from rld.typing import BaselineBuilder, ObsLike
 
@@ -85,33 +86,37 @@ class AttributationTrajectoryIterator(abc.Iterator):
         if isinstance(self.model.action_space(), gym.spaces.Discrete):
             # Discrete action space requires no modification to input signals
             pass
-        elif isinstance(self.model.action_space(), gym.spaces.MultiDiscrete):
-            # With MultiDiscrete action space we use batch dim to calculate
-            # attributations for each action in this space
-            action_sizes = self.model.action_space().nvec
-            num_actions = len(action_sizes)
-            num_obs_dims = len(self.model.obs_space().shape)
+        elif isinstance(
+            self.model.action_space(), (gym.spaces.MultiDiscrete, gym.spaces.Tuple)
+        ):
+            if isinstance(self.model.action_space(), gym.spaces.MultiDiscrete):
+                # With MultiDiscrete action space we use batch dim to calculate
+                # attributations for each action in this space
+                subs = self.model.action_space().nvec
+            else:
+                # With Tuple action space we use batch dim to calculate attributations
+                # for each subspace in the action space. The overall mechanism is very
+                # similar to MultiDiscrete case, but each subspace might potentially be
+                # a different space.
+                subs = [space.n for space in self.model.action_space().spaces]
 
-            # We are repeating the batch dim by the number of actions in action space
-            repeat_shape = (num_actions, *(1 for _ in range(num_obs_dims)))
-            inputs = inputs.repeat(repeat_shape)
-            baselines = baselines.repeat(repeat_shape)
+            num_subs = len(subs)
 
-            # The multi discrete action is stored in a rollout as a vector (a1, a2, ...)
-            # However, in the model output, it is concatenated and flattened to a single
-            # dimension. Thus, to each action we add an offset from the beginning of the
-            # flattened vector.
+            # We are repeating the batch dim by the number of subs (actions or spaces)
+            inputs = _extend_batch_dim(inputs, num_subs)
+            baselines = _extend_batch_dim(baselines, num_subs)
+
+            # The action is stored in a rollout as a vector of either (a1, a2, ...) or
+            # (s1, s2, ...). However, in the model output, it is concatenated and
+            # flattened to a single dimension. To compensate for that, we add an offset
+            # from the beginning of the flattened vector to each action.
             # Example:
             # action_space = MultiDiscrete([4, 2])
             # rollout_action = np.array([1, 0])
             # model_action = [1, 0] + [0, 4] = [1, 4]
-            offset = torch.tensor(action_sizes, device=self.model.output_device()).roll(
-                1
-            )
+            offset = torch.tensor(subs).roll(1).to(device=self.model.output_device())
             offset[0] = 0
             target = target + offset
-        elif isinstance(self.model.action_space(), gym.spaces.Tuple):
-            raise NotImplementedError
         else:
             raise ActionSpaceNotSupported(self.model.action_space())
 
@@ -150,13 +155,30 @@ def attribute_trajectory(
                 ]
             )
         elif isinstance(model.action_space(), gym.spaces.Tuple):
-            raise NotImplementedError
+            attributation = TupleActionAttributation(
+                [
+                    _convert_to_original_dimensions(
+                        model.obs_space(), action_attributation.unsqueeze(0),
+                    )
+                    for action_attributation in raw_attributation
+                ]
+            )
         else:
             raise ActionSpaceNotSupported(model.action_space())
 
         timesteps.append(replace(batch.timestep, attributations=attributation))
 
     return Trajectory(timesteps)
+
+
+def _extend_batch_dim(t: torch.Tensor, new_batch_dim: int) -> torch.Tensor:
+    """
+    Given a tensor `t` of shape [B x D1 x D2 x ...] we output the same tensor repeated
+    along the batch dimension ([new_batch_dim x D1 x D2 x ...]).
+    """
+    num_non_batch_dims = len(t.shape[1:])
+    repeat_shape = (new_batch_dim, *(1 for _ in range(num_non_batch_dims)))
+    return t.repeat(repeat_shape)
 
 
 def _convert_to_original_dimensions(
