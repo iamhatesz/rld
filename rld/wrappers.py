@@ -1,13 +1,22 @@
 import gym
 import torch
+from ray.rllib.models.modelv2 import ModelV2
+from ray.rllib.models.preprocessors import get_preprocessor
 
-from rld.model import Model, RayModel
+from rld.model import Model
+from rld.typing import ObsLikeStrict, ObsLike
+
+
+RayModel = ModelV2
 
 
 class RayModelWrapper(Model):
     def __init__(self, model: RayModel):
         super().__init__()
         self.model = model
+        self.preprocessor = get_preprocessor(self.original_obs_space())(
+            self.original_obs_space()
+        )
 
     def unwrapped(self):
         return self.model
@@ -26,3 +35,12 @@ class RayModelWrapper(Model):
 
     def obs_space(self) -> gym.Space:
         return self.model.obs_space
+
+    def original_obs_space(self) -> gym.Space:
+        if hasattr(self.obs_space(), "original_space"):
+            return self.obs_space().original_space
+        else:
+            return self.obs_space()
+
+    def flatten_obs(self, obs: ObsLike) -> ObsLikeStrict:
+        return self.preprocessor.transform(obs)

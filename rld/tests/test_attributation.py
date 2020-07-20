@@ -10,7 +10,6 @@ from rld.attributation import (
     AttributationTarget,
     attribute_trajectory,
 )
-from rld.processors import RayObsPreprocessor
 from rld.rollout import FromMemoryRolloutReader
 from rld.tests.resources.envs import ALL_ENVS, collect_rollout
 from rld.wrappers import RayModelWrapper
@@ -34,11 +33,7 @@ class TestAttributation(unittest.TestCase):
                 with self.subTest(trainer=trainer_fn, env=env_fn):
                     trainer = trainer_fn(config={"env": env_fn, "framework": "torch",})
                     model = RayModelWrapper(trainer.get_policy().model)
-                    if hasattr(model.unwrapped().obs_space, "original_space"):
-                        obs_space = model.unwrapped().obs_space.original_space
-                    else:
-                        obs_space = model.unwrapped().obs_space
-                    preprocessor = get_preprocessor(obs_space)(obs_space)
+                    obs_space = model.original_obs_space()
 
                     rollout = FromMemoryRolloutReader(collect_rollout(env_fn()))
 
@@ -46,7 +41,6 @@ class TestAttributation(unittest.TestCase):
                         trajectory_it = AttributationTrajectoryIterator(
                             trajectory,
                             model=model,
-                            obs_preprocessor=RayObsPreprocessor(preprocessor),
                             baseline=None,
                             target=AttributationTarget.PICKED,
                         )
