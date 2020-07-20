@@ -6,7 +6,7 @@ Development tool for evaluation and interpretability of reinforcement learning a
     <tr>
         <td></td>
         <td></td>
-        <td colspan="3">**Action space**</td>
+        <td colspan="3"><strong>Action space</strong></td>
     </tr>
     <tr>
         <td></td>
@@ -16,7 +16,7 @@ Development tool for evaluation and interpretability of reinforcement learning a
         <td>Tuple</td>
     </tr>
     <tr>
-        <td rowspan="3">**Obs space**</td>
+        <td rowspan="3"><strong>Obs space</strong></td>
         <td>Box</td>
         <td>:heavy_check_mark:</td>
         <td>:heavy_check_mark:</td>
