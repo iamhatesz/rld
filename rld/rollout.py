@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import shelve
+from abc import ABC
 from collections import abc
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Optional, Any, Sequence
+from typing import Iterator, Optional, Any, Sequence, Union
 
+import gym
 import numpy as np
 
 from rld.typing import (
@@ -17,7 +19,51 @@ from rld.typing import (
     AttributationLike,
 )
 
-_BATCH_DIM = 0
+
+@dataclass
+class ActionAttributation(ABC):
+    data: Union[AttributationLike, Sequence[AttributationLike]]
+
+    def is_complied(self, obs_space: gym.Space) -> bool:
+        raise NotImplementedError
+
+
+@dataclass
+class DiscreteActionAttributation(ActionAttributation):
+    data: AttributationLike
+
+    def is_complied(self, obs_space: gym.Space) -> bool:
+        return obs_space.contains(self.data)
+
+    def action(self) -> AttributationLike:
+        return self.data
+
+
+@dataclass
+class MultiDiscreteActionAttributation(ActionAttributation):
+    data: Sequence[AttributationLike]
+
+    def is_complied(self, obs_space: gym.Space) -> bool:
+        return all(
+            [obs_space.contains(self.action(i)) for i in range(self.num_actions())]
+        )
+
+    def num_actions(self) -> int:
+        return len(self.data)
+
+    def action(self, index: int) -> AttributationLike:
+        return self.data[index]
+
+
+@dataclass
+class TupleActionAttributation(ActionAttributation):
+    data: Sequence[AttributationLike]
+
+    def is_complied(self, obs_space: gym.Space) -> bool:
+        raise NotImplementedError
+
+    def space(self, index: int) -> AttributationLike:
+        return self.data[index]
 
 
 @dataclass
@@ -27,7 +73,7 @@ class Timestep:
     reward: RewardLike
     done: DoneLike
     info: InfoLike
-    attributations: Optional[AttributationLike] = None
+    attributations: Optional[ActionAttributation] = None
 
 
 @dataclass

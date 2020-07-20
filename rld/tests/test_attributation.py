@@ -1,5 +1,4 @@
 import unittest
-from pathlib import Path
 
 import ray
 from ray.rllib.agents.pg import PGTrainer
@@ -11,11 +10,10 @@ from rld.attributation import (
     AttributationTarget,
     attribute_trajectory,
 )
-from rld.processors import RayObsPreprocessor, RayAttributionPostprocessor
-from rld.rollout import RayRolloutReader, FromMemoryRolloutReader
+from rld.processors import RayObsPreprocessor
+from rld.rollout import FromMemoryRolloutReader
 from rld.tests.resources.envs import ALL_ENVS, collect_rollout
 from rld.wrappers import RayModelWrapper
-
 
 ALL_TRAINERS = [
     PGTrainer,
@@ -49,9 +47,6 @@ class TestAttributation(unittest.TestCase):
                             trajectory,
                             model=model,
                             obs_preprocessor=RayObsPreprocessor(preprocessor),
-                            attr_postprocessor=RayAttributionPostprocessor(
-                                model.unwrapped()
-                            ),
                             baseline=None,
                             target=AttributationTarget.PICKED,
                         )
@@ -61,7 +56,5 @@ class TestAttributation(unittest.TestCase):
                         for timestep in attr_trajectory:
                             self.assertIsNotNone(timestep.attributations)
                             self.assertTrue(
-                                env_fn.observation_space.contains(
-                                    timestep.attributations
-                                )
+                                timestep.attributations.is_complied(obs_space)
                             )

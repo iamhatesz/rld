@@ -4,14 +4,24 @@ from dataclasses import dataclass, replace
 from enum import IntEnum
 from typing import Optional
 
+import gym
 import numpy as np
 import torch
 from captum.attr import IntegratedGradients
+from gym.spaces import flatten, unflatten
+from ray.rllib.models.modelv2 import restore_original_dimensions
+from ray.rllib.utils.torch_ops import convert_to_non_torch_type
 
+from rld.exception import ActionSpaceNotSupported
 from rld.model import Model
-from rld.processors import ObsPreprocessor, NoObsPreprocessor, AttributionPostprocessor
-from rld.rollout import Trajectory, Timestep
-from rld.typing import BaselineBuilder
+from rld.processors import ObsPreprocessor, NoObsPreprocessor
+from rld.rollout import (
+    Trajectory,
+    Timestep,
+    DiscreteActionAttributation,
+    MultiDiscreteActionAttributation,
+)
+from rld.typing import BaselineBuilder, ObsLike
 
 
 class AttributationTarget(IntEnum):
@@ -29,8 +39,8 @@ class AttributationTarget(IntEnum):
 
 @dataclass
 class TimestepBatch:
-    obs: torch.Tensor
-    baseline: torch.Tensor
+    inputs: torch.Tensor
+    baselines: torch.Tensor
     target: torch.Tensor
     origin: Timestep
 
@@ -41,7 +51,6 @@ class AttributationTrajectoryIterator(abc.Iterator):
         trajectory: Trajectory,
         model: Model,
         obs_preprocessor: Optional[ObsPreprocessor] = None,
-        attr_postprocessor: Optional[AttributionPostprocessor] = None,
         baseline: Optional[BaselineBuilder] = None,
         target: AttributationTarget = AttributationTarget.PICKED,
     ):
@@ -50,7 +59,6 @@ class AttributationTrajectoryIterator(abc.Iterator):
         self.obs_preprocessor = (
             obs_preprocessor if obs_preprocessor is not None else NoObsPreprocessor()
         )
-        self.attr_postprocessor = attr_postprocessor
         self.baseline = baseline
         self.target = target
         self._it = iter(self.trajectory)
@@ -61,32 +69,59 @@ class AttributationTrajectoryIterator(abc.Iterator):
         except StopIteration:
             raise StopIteration
 
-        obs = self.obs_preprocessor.transform(timestep.obs)
+        inputs = self.obs_preprocessor.transform(timestep.obs)
 
         if self.baseline is not None:
-            baseline = self.baseline()
+            baselines = self.baseline()
         else:
-            baseline = np.zeros_like(obs)
+            baselines = np.zeros_like(inputs)
 
         if self.target == AttributationTarget.PICKED:
             target = timestep.action
         else:
             raise NotImplementedError
 
-        obs = torch.tensor(obs, device=self.model.input_device()).unsqueeze(dim=0)
-        baseline = torch.tensor(baseline, device=self.model.output_device()).unsqueeze(
-            dim=0
-        )
-        target = torch.tensor(target, device=self.model.output_device()).unsqueeze(
-            dim=0
-        )
+        inputs = torch.tensor(inputs, device=self.model.input_device()).unsqueeze(dim=0)
+        baselines = torch.tensor(
+            baselines, device=self.model.output_device()
+        ).unsqueeze(dim=0)
+        target = torch.tensor(target, device=self.model.output_device())
 
-        # Temporarily use only first sub-action in case of MultiDiscrete action space
-        if target.ndim > 1 and target.size(1) > 1:
-            target = target[:, 0]
+        if isinstance(self.model.action_space(), gym.spaces.Discrete):
+            # Discrete action space requires no modification to input signals
+            pass
+        elif isinstance(self.model.action_space(), gym.spaces.MultiDiscrete):
+            # With MultiDiscrete action space we use batch dim to calculate
+            # attributations for each action in this space
+            action_sizes = self.model.action_space().nvec
+            num_actions = len(action_sizes)
+            num_obs_dims = len(self.model.obs_space().shape)
+
+            # We are repeating the batch dim by the number of actions in action space
+            repeat_shape = (num_actions, *(1 for _ in range(num_obs_dims)))
+            inputs = inputs.repeat(repeat_shape)
+            baselines = baselines.repeat(repeat_shape)
+
+            # The multi discrete action is stored in a rollout as a vector (a1, a2, ...)
+            # However, in the model output, it is concatenated and flattened to a single
+            # dimension. Thus, to each action we add an offset from the beginning of the
+            # flattened vector.
+            # Example:
+            # action_space = MultiDiscrete([4, 2])
+            # rollout_action = np.array([1, 0])
+            # model_action = [1, 0] + [0, 4] = [1, 4]
+            offset = torch.tensor(action_sizes, device=self.model.output_device()).roll(
+                1
+            )
+            offset[0] = 0
+            target = target + offset
+        elif isinstance(self.model.action_space(), gym.spaces.Tuple):
+            raise NotImplementedError
+        else:
+            raise ActionSpaceNotSupported(self.model.action_space())
 
         return TimestepBatch(
-            obs=obs, baseline=baseline, target=target, origin=timestep,
+            inputs=inputs, baselines=baselines, target=target, origin=timestep,
         )
 
 
@@ -99,10 +134,49 @@ def attribute_trajectory(
     algo = IntegratedGradients(model)
     timesteps = []
     for timestep in trajectory_it:
-        attr = algo.attribute(
-            timestep.obs, baselines=timestep.baseline, target=timestep.target
+        raw_attributation = algo.attribute(
+            timestep.inputs, baselines=timestep.baselines, target=timestep.target
         )
-        final_attr = trajectory_it.attr_postprocessor.transform(attr)
-        timesteps.append(replace(timestep.origin, attributations=final_attr))
+
+        if isinstance(model.action_space(), gym.spaces.Discrete):
+            attributation = DiscreteActionAttributation(
+                _convert_to_original_dimensions(model.obs_space(), raw_attributation)
+            )
+        elif isinstance(model.action_space(), gym.spaces.MultiDiscrete):
+            attributation = MultiDiscreteActionAttributation(
+                [
+                    _convert_to_original_dimensions(
+                        # Create a dummy batch dim, which is lost with this type of
+                        # for-loop iteration
+                        model.obs_space(),
+                        action_attributation.unsqueeze(0),
+                    )
+                    for action_attributation in raw_attributation
+                ]
+            )
+        elif isinstance(model.action_space(), gym.spaces.Tuple):
+            raise NotImplementedError
+        else:
+            raise ActionSpaceNotSupported(model.action_space())
+
+        timesteps.append(replace(timestep.origin, attributations=attributation))
 
     return Trajectory(timesteps)
+
+
+def _convert_to_original_dimensions(
+    obs_space: gym.Space, data: torch.Tensor
+) -> ObsLike:
+    if hasattr(obs_space, "original_space"):
+        original_obs_space = obs_space.original_space
+    else:
+        original_obs_space = obs_space
+    return unflatten(
+        original_obs_space,
+        flatten(
+            original_obs_space,
+            convert_to_non_torch_type(
+                restore_original_dimensions(data, obs_space, tensorlib="torch")
+            ),
+        ),
+    )
