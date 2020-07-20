@@ -1,3 +1,4 @@
+import gym
 import torch
 
 from rld.model import Model, RayModel
@@ -19,3 +20,9 @@ class RayModelWrapper(Model):
 
     def input_device(self) -> torch.device:
         return next(self.model.parameters()).device
+
+    def action_space(self) -> gym.Space:
+        return self.model.action_space
+
+    def obs_space(self) -> gym.Space:
+        return self.model.obs_space
