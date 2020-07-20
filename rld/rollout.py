@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import pickle
 import shelve
 from abc import ABC
 from collections import abc
 from dataclasses import dataclass
+from io import BufferedWriter
 from pathlib import Path
-from typing import Iterator, Optional, Any, Sequence, Union
+from typing import Iterator, Optional, Any, Sequence, Union, List, BinaryIO
 
 import gym
 import numpy as np
@@ -141,10 +143,24 @@ class RolloutIterator:
 class FromMemoryRolloutReader(RolloutReader, RolloutIterator):
     def __init__(self, rollout: Rollout):
         self.rollout = rollout
-        self._it = None
+        self._it: Optional[Iterator[Trajectory]] = None
 
     def __iter__(self) -> RolloutIterator:
         self._it = iter(self.rollout.trajectories)
+        return self
+
+    def __next__(self) -> Trajectory:
+        return next(self._it)
+
+
+class FromFileRolloutReader(RolloutReader, RolloutIterator):
+    def __init__(self, rollout_path: Path):
+        self.rollout_path = rollout_path
+        self._it: Optional[Iterator[Trajectory]] = None
+
+    def __iter__(self) -> RolloutIterator:
+        with open(str(self.rollout_path), "rb") as rollout_file:
+            self._it = iter(pickle.load(rollout_file).trajectories)
         return self
 
     def __next__(self) -> Trajectory:
@@ -187,3 +203,29 @@ def to_int_if_scalar(value: Any) -> ActionLike:
     if np.isscalar(value):
         return int(value)
     return value
+
+
+class RolloutWriter:
+    def write(self, trajectory: Trajectory):
+        pass
+
+
+class ToFileRolloutWriter(RolloutWriter):
+    def __init__(self, rollout_path: Path):
+        self.rollout_path = rollout_path
+        self._rollout_file: Optional[BinaryIO] = None
+        self._trajectories: List[Trajectory] = []
+
+    def __enter__(self) -> RolloutWriter:
+        self._rollout_file = open(str(self.rollout_path), "wb")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.flush()
+        self._rollout_file.close()
+
+    def write(self, trajectory: Trajectory):
+        self._trajectories.append(trajectory)
+
+    def flush(self):
+        self._rollout_file.write(pickle.dumps(Rollout(self._trajectories)))

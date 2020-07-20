@@ -18,6 +18,9 @@ flake8 = "^3.8.3"
 pre-commit = "^2.6.0"
 pytest = "^5.4.3"
 
+[tool.poetry.scripts]
+rld = "rld.cli:main"
+
 [tool.black]
 line-length = 88
 
