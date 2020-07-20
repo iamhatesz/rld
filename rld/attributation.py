@@ -14,7 +14,6 @@ from ray.rllib.utils.torch_ops import convert_to_non_torch_type
 
 from rld.exception import ActionSpaceNotSupported
 from rld.model import Model
-from rld.processors import ObsPreprocessor, NoObsPreprocessor
 from rld.rollout import (
     Trajectory,
     Timestep,
@@ -50,15 +49,11 @@ class AttributationTrajectoryIterator(abc.Iterator):
         self,
         trajectory: Trajectory,
         model: Model,
-        obs_preprocessor: Optional[ObsPreprocessor] = None,
         baseline: Optional[BaselineBuilder] = None,
         target: AttributationTarget = AttributationTarget.PICKED,
     ):
         self.trajectory = trajectory
         self.model = model
-        self.obs_preprocessor = (
-            obs_preprocessor if obs_preprocessor is not None else NoObsPreprocessor()
-        )
         self.baseline = baseline
         self.target = target
         self._it = iter(self.trajectory)
@@ -69,7 +64,7 @@ class AttributationTrajectoryIterator(abc.Iterator):
         except StopIteration:
             raise StopIteration
 
-        inputs = self.obs_preprocessor.transform(timestep.obs)
+        inputs = self.model.flatten_obs(timestep.obs)
 
         if self.baseline is not None:
             baselines = self.baseline()

@@ -3,10 +3,11 @@ from abc import ABC
 import gym
 import torch
 import torch.nn as nn
-from ray.rllib.models.modelv2 import ModelV2
+
+from rld.typing import ObsLike, ObsLikeStrict
 
 
-class Model(nn.Module):
+class Model(ABC, nn.Module):
     def input_device(self) -> torch.device:
         raise NotImplementedError
 
@@ -19,6 +20,5 @@ class Model(nn.Module):
     def obs_space(self) -> gym.Space:
         raise NotImplementedError
 
-
-class RayModel(ABC, Model, ModelV2):
-    pass
+    def flatten_obs(self, obs: ObsLike) -> ObsLikeStrict:
+        raise NotImplementedError
