@@ -2,7 +2,8 @@ import sys
 from collections import abc
 from dataclasses import dataclass, replace
 from enum import IntEnum
-from typing import Optional
+from functools import partial
+from typing import Optional, cast
 
 import gym
 import numpy as np
@@ -142,23 +143,23 @@ def attribute_trajectory(
             attributation = DiscreteActionAttributation(
                 _convert_to_original_dimensions(model.obs_space(), raw_attributation)
             )
-        elif isinstance(model.action_space(), gym.spaces.MultiDiscrete):
-            attributation = MultiDiscreteActionAttributation(
+        elif isinstance(
+            model.action_space(), (gym.spaces.MultiDiscrete, gym.spaces.Tuple)
+        ):
+            if isinstance(model.action_space(), gym.spaces.MultiDiscrete):
+                # Using partial shouldn't be needed here obviously, but PyCharm
+                # unexpectedly complains that cls is not callable at the instantiation
+                # line...
+                cls = partial(MultiDiscreteActionAttributation)
+            else:
+                cls = partial(TupleActionAttributation)
+            attributation = cls(
                 [
                     _convert_to_original_dimensions(
                         # Create a dummy batch dim, which is lost with this type of
                         # for-loop iteration
                         model.obs_space(),
                         action_attributation.unsqueeze(0),
-                    )
-                    for action_attributation in raw_attributation
-                ]
-            )
-        elif isinstance(model.action_space(), gym.spaces.Tuple):
-            attributation = TupleActionAttributation(
-                [
-                    _convert_to_original_dimensions(
-                        model.obs_space(), action_attributation.unsqueeze(0),
                     )
                     for action_attributation in raw_attributation
                 ]
