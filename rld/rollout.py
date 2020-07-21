@@ -123,6 +123,9 @@ class TrajectoryIterator(abc.Iterator):
 class Rollout:
     trajectories: Sequence[Trajectory]
 
+    def __len__(self) -> int:
+        return len(self.trajectories)
+
 
 class RolloutReader:
     def __iter__(self) -> RolloutIterator:
