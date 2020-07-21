@@ -3,7 +3,7 @@ from collections import abc
 from dataclasses import dataclass, replace
 from enum import IntEnum
 from functools import partial
-from typing import Optional, cast
+from typing import Optional
 
 import gym
 import numpy as np
