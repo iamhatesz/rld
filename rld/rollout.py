@@ -86,12 +86,6 @@ class Timestep:
 @dataclass
 class Trajectory(abc.Iterable, abc.Sized):
     timesteps: Sequence[Timestep]
-    # obs: ObsBatchLike
-    # action: ActionBatchLike
-    # reward: RewardBatchLike
-    # done: DoneBatchLike
-    # info: InfoBatchLike
-    # attributations: Optional[AttributationBatchLike] = None
 
     # Right now we only support single timestep retrieval
     def __getitem__(self, item: int) -> Timestep:
@@ -108,7 +102,7 @@ class Trajectory(abc.Iterable, abc.Sized):
         return TrajectoryIterator(self)
 
     def __len__(self) -> int:
-        return len(self.info)
+        return len(self.timesteps)
 
 
 class TrajectoryIterator(abc.Iterator):
