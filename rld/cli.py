@@ -2,7 +2,13 @@ from pathlib import Path
 
 import click
 
-from rld.rollout import RayRolloutReader, ToFileRolloutWriter
+from rld.app import init
+from rld.rollout import (
+    RayRolloutReader,
+    ToFileRolloutWriter,
+    FromFileRolloutReader,
+    Rollout,
+)
 
 
 @click.group()
@@ -32,6 +38,25 @@ def convert(out: str, rollout: str):
             rollout_writer.write(trajectory)
 
     click.echo("Done.")
+
+
+@main.command()
+# @click.option("--debug", default=True)
+@click.argument("rollout")
+def start(rollout: str):
+    """
+    This script runs web server serving application to visualize calculated
+    attributations.
+    """
+    rollout_path = Path(rollout)
+    if not rollout_path.exists():
+        raise FileNotFoundError(f"Rollout file `{rollout}` not found.")
+
+    rollout_obj = FromFileRolloutReader(rollout_path)
+    # TODO Refactor this
+    app = init(Rollout([t for t in rollout_obj]))
+    # TODO Make this dependent on the debug flag value
+    app.run(debug=True)
 
 
 if __name__ == "__main__":

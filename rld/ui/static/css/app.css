@@ -1,0 +1,25 @@
+body {
+    margin: 0;
+}
+
+canvas {
+    display: block;
+}
+
+.container {
+    width: 800px;
+    margin: 0 auto;
+}
+
+.scene {
+    width: 800px;
+    height: 500px;
+}
+
+.controls {
+    width: 100%;
+}
+
+.seekbar {
+
+}

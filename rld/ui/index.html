@@ -3,220 +3,238 @@
 <head>
     <meta charset="UTF-8">
     <title>rld</title>
-    <style>
-        body { margin: 0; }
-        canvas { display: block; }
-        .renderer { width: 600px; height: 400px; }
-        .controls { width: 600px; }
-        .seekbar { width: 350px; }
-        .attribution { display: block; height: 10px; width: 400px; background-color: #000000; }
-        .positive { background-color: #00ff00; }
-        .negative { background-color: #ff0000; }
-    </style>
+    <link rel="stylesheet" type="text/css" href="/static/css/app.css">
+<!--    <style>-->
+<!--        body { margin: 0; }-->
+<!--        canvas { display: block; }-->
+<!--        .renderer { width: 600px; height: 400px; }-->
+<!--        .controls { width: 600px; }-->
+<!--        .seekbar { width: 350px; }-->
+<!--        .attribution { display: block; height: 10px; width: 400px; background-color: #000000; }-->
+<!--        .positive { background-color: #00ff00; }-->
+<!--        .negative { background-color: #ff0000; }-->
+<!--    </style>-->
 </head>
 <body>
-    <div class="renderer" id="renderer"></div>
-    <div class="controls">
-        <form>
-            <fieldset>
-                <legend>Episode: xxx | Step: <span id="episodeStep">0</span>/<span id="episodeLength">1000</span></legend>
-                <button>&lt;&lt;</button>
-                <button>&lt;</button>
-                <button>Play</button>
-                <input type="range" min="0" max="100" value="0" class="seekbar" id="seekbar">
-                <button>&gt;</button>
-                <button>&gt;&gt;</button>
-            </fieldset>
-        </form>
+    <div class="container">
+        <div class="scene"></div>
+        <div class="controls">
+            <form>
+                <fieldset>
+                    <legend>Step: <span id="episodeStep">0</span>/<span id="episodeLength">0</span></legend>
+                    <button>&lt;&lt;</button>
+                    <button>&lt;</button>
+                    <button>Play</button>
+                    <input type="range" min="0" max="100" value="0" class="seekbar" id="seekbar">
+                    <button>&gt;</button>
+                    <button>&gt;&gt;</button>
+                </fieldset>
+            </form>
+        </div>
     </div>
-    <div class="attributions">
-        <table>
-            <tbody>
-            <tr>
-                <td>Cart position</td>
-                <td style="width: 400px;"><span class="attribution" id="cartPositionAttr"></span></td>
-                <td id="cartPositionAttrValue">0.0</td>
-            </tr>
-            <tr>
-                <td>Cart velocity</td>
-                <td><span class="attribution" id="cartVelocityAttr"></span></td>
-                <td id="cartVelocityAttrValue">0.0</td>
-            </tr>
-            <tr>
-                <td>Pole angle</td>
-                <td><span class="attribution" id="poleAngleAttr"></span></td>
-                <td id="poleAngleAttrValue">0.0</td>
-            </tr>
-            <tr>
-                <td>Pole angular velocity</td>
-                <td><span class="attribution" id="poleAngularVelocityAttr"></span></td>
-                <td id="poleAngularVelocityAttrValue">0.0</td>
-            </tr>
-            </tbody>
-        </table>
-    </div>
+
+<!--    <div class="renderer" id="renderer"></div>-->
+<!--    <div class="controls">-->
+<!--        <form>-->
+<!--            <fieldset>-->
+<!--                <legend>Episode: xxx | Step: <span id="episodeStep">0</span>/<span id="episodeLength">1000</span></legend>-->
+<!--                <button>&lt;&lt;</button>-->
+<!--                <button>&lt;</button>-->
+<!--                <button>Play</button>-->
+<!--                <input type="range" min="0" max="100" value="0" class="seekbar" id="seekbar">-->
+<!--                <button>&gt;</button>-->
+<!--                <button>&gt;&gt;</button>-->
+<!--            </fieldset>-->
+<!--        </form>-->
+<!--    </div>-->
+<!--    <div class="attributions">-->
+<!--        <table>-->
+<!--            <tbody>-->
+<!--            <tr>-->
+<!--                <td>Cart position</td>-->
+<!--                <td style="width: 400px;"><span class="attribution" id="cartPositionAttr"></span></td>-->
+<!--                <td id="cartPositionAttrValue">0.0</td>-->
+<!--            </tr>-->
+<!--            <tr>-->
+<!--                <td>Cart velocity</td>-->
+<!--                <td><span class="attribution" id="cartVelocityAttr"></span></td>-->
+<!--                <td id="cartVelocityAttrValue">0.0</td>-->
+<!--            </tr>-->
+<!--            <tr>-->
+<!--                <td>Pole angle</td>-->
+<!--                <td><span class="attribution" id="poleAngleAttr"></span></td>-->
+<!--                <td id="poleAngleAttrValue">0.0</td>-->
+<!--            </tr>-->
+<!--            <tr>-->
+<!--                <td>Pole angular velocity</td>-->
+<!--                <td><span class="attribution" id="poleAngularVelocityAttr"></span></td>-->
+<!--                <td id="poleAngularVelocityAttrValue">0.0</td>-->
+<!--            </tr>-->
+<!--            </tbody>-->
+<!--        </table>-->
+<!--    </div>-->
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r118/three.min.js"></script>
     <script>
-        var scene = new THREE.Scene();
-        var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        var renderer = new THREE.WebGLRenderer({antialias: true});
-        renderer.setSize(600, 400);
-        document.getElementById("renderer").append(renderer.domElement);
-
-        // var geometry = new THREE.BoxGeometry();
-        // var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
-        // var cube = new THREE.Mesh(geometry, material);
-        // scene.add(cube);
-
-        camera.position.x = 0;
-        camera.position.y = 2;
-        camera.position.z = 5;
-        camera.lookAt(0, 1, 0);
-
-        function animate() {
-            requestAnimationFrame(animate);
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        function init() {
-            function cartMesh() {
-                var geometry = new THREE.BoxGeometry(3, 1, 1);
-                var material = new THREE.MeshStandardMaterial({color: 0x00ff00});
-                var mesh = new THREE.Mesh(geometry, material);
-                return mesh;
-            }
-
-            function poleMesh() {
-                var geometry = new THREE.BoxGeometry(0.25, 3, 1.1);
-                var material = new THREE.MeshStandardMaterial({color: 0x00ff00});
-
-                var mesh = new THREE.Mesh(geometry, material);
-                mesh.position.set(0, 1.5, 0);
-
-                var geometry2 = geometry.clone();
-                geometry2.rotateZ(THREE.Math.degToRad(90));
-                var mesh2 = new THREE.Mesh(geometry2, material);
-                mesh2.position.set(0, -1.5, 0);
-                mesh2.rotation.set(0, 0, THREE.Math.degToRad(90));
-
-                pivot = new THREE.Group();
-                pivot.position.set(0, 0, 0);
-                pivot.add(mesh);
-
-                return pivot;
-            }
-
-            function axleLine() {
-                var points = [
-                    new THREE.Vector3(-20, 0, 0),
-                    new THREE.Vector3(0, 0, 0),
-                    new THREE.Vector3(20, 0, 0)
-                ];
-                var geometry = new THREE.BufferGeometry().setFromPoints(points);
-                var material = new THREE.LineBasicMaterial({color: 0xff0000});
-                var line = new THREE.Line(geometry, material);
-                return line;
-            }
-
-            var cart = cartMesh();
-            var pole = poleMesh();
-            var axle = axleLine();
-
-            // var cartpole = new THREE.Group();
-            // cartpole.add(cart, pole);
-
-            return [cart, pole, axle]
-        }
-
-        function update(meshes, state) {
-            var obs = state["obs"];
-            var attribution = state["attribution"];
-
-            var cart_position = obs[0];
-            var cart_velocity = obs[1];
-            var pole_angle = obs[2];
-            var pole_angular_velocity = obs[3];
-
-            var cart_position_attr = attribution[0];
-            var cart_velocity_attr = attribution[1];
-            var pole_angle_attr = attribution[2];
-            var pole_angular_velocity_attr = attribution[3];
-
-            var cartpole = meshes[0];
-            var pole = meshes[1];
-
-            cartpole.position.set(cart_position, 0, 0);
-            pole.position.set(cart_position, 0, 0);
-            pole.rotation.z = pole_angle;
-
-            document.getElementById("cartPositionAttr").style.width = Math.round(Math.abs(300 * cart_position_attr)) + "px";
-            document.getElementById("cartPositionAttr").classList.remove("positive");
-            document.getElementById("cartPositionAttr").classList.remove("negative");
-            document.getElementById("cartPositionAttr").classList.add(cart_position_attr > 0 ? "positive" : "negative");
-            document.getElementById("cartPositionAttrValue").innerText = cart_position_attr.toFixed(4);
-
-            document.getElementById("cartVelocityAttr").style.width = Math.round(Math.abs(300 * cart_velocity_attr)) + "px";
-            document.getElementById("cartVelocityAttr").classList.remove("positive");
-            document.getElementById("cartVelocityAttr").classList.remove("negative");
-            document.getElementById("cartVelocityAttr").classList.add(cart_velocity_attr > 0 ? "positive" : "negative");
-            document.getElementById("cartVelocityAttrValue").innerText = cart_velocity_attr.toFixed(4);
-
-            document.getElementById("poleAngleAttr").style.width = Math.round(Math.abs(300 * pole_angle_attr)) + "px";
-            document.getElementById("poleAngleAttr").classList.remove("positive");
-            document.getElementById("poleAngleAttr").classList.remove("negative");
-            document.getElementById("poleAngleAttr").classList.add(pole_angle_attr > 0 ? "positive" : "negative");
-            document.getElementById("poleAngleAttrValue").innerText = pole_angle_attr.toFixed(4);
-
-            document.getElementById("poleAngularVelocityAttr").style.width = Math.round(Math.abs(300 * pole_angular_velocity_attr)) + "px";
-            document.getElementById("poleAngularVelocityAttr").classList.remove("positive");
-            document.getElementById("poleAngularVelocityAttr").classList.remove("negative");
-            document.getElementById("poleAngularVelocityAttr").classList.add(pole_angular_velocity_attr > 0 ? "positive" : "negative");
-            document.getElementById("poleAngularVelocityAttrValue").innerText = pole_angular_velocity_attr.toFixed(4);
-
-            // var cart_position_importance = Math.max(Math.min(Math.floor((1 - cart_position_attr) * 255), 255), 0);
-            // var cart_color = 255 * 65536 + cart_position_importance * 255 + 0;
-            // console.log(cartpole);
-            // cartpole.material.color.setHex(cart_color);
-            // console.log("Setting color to:", cart_position_importance);
-            //
-            // console.log(cartpole);
-
-            // cart.translateX(cart_position);
-            // pole.translateX(cart_position);
-
-            // cart.geometry.computeBoundingBox();
-            // var cartCenter = new THREE.Vector3(0, 0, 0)
-            // cart.geometry.boundingBox.getCenter(cartCenter);
-            // console.log(cartCenter);
-            // pole.rotateAround(cartCenter, pole_angle);
-        }
-
-        var light = new THREE.DirectionalLight(0xffffff, 2);
-        light.position.set(1, 5, 1);
-        scene.add(light);
-
-        var meshes = init();
-        meshes.forEach(function (mesh, index) {
-            console.log("Adding mesh:", mesh)
-            scene.add(mesh);
-        });
-        scene.add(new THREE.AxesHelper(5));
-
-        var episode = {{ episode|tojson }};
-        document.getElementById("seekbar").setAttribute("max", episode.length - 1);
-        document.getElementById("episodeLength").innerText = episode.length - 1;
-
-        update(meshes, episode[0]);
-
-        document.getElementById("seekbar").addEventListener("input", function (ev) {
-            var step_id = parseInt(ev.target.value);
-            var step = episode[step_id];
-            console.log("Moving to", step);
-            document.getElementById("episodeStep").innerText = step_id;
-            update(meshes, step);
-        });
+        // var scene = new THREE.Scene();
+        // var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // var renderer = new THREE.WebGLRenderer({antialias: true});
+        // renderer.setSize(600, 400);
+        // document.getElementById("renderer").append(renderer.domElement);
+        //
+        // // var geometry = new THREE.BoxGeometry();
+        // // var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
+        // // var cube = new THREE.Mesh(geometry, material);
+        // // scene.add(cube);
+        //
+        // camera.position.x = 0;
+        // camera.position.y = 2;
+        // camera.position.z = 5;
+        // camera.lookAt(0, 1, 0);
+        //
+        // function animate() {
+        //     requestAnimationFrame(animate);
+        //     renderer.render(scene, camera);
+        // }
+        // animate();
+        //
+        // function init() {
+        //     function cartMesh() {
+        //         var geometry = new THREE.BoxGeometry(3, 1, 1);
+        //         var material = new THREE.MeshStandardMaterial({color: 0x00ff00});
+        //         var mesh = new THREE.Mesh(geometry, material);
+        //         return mesh;
+        //     }
+        //
+        //     function poleMesh() {
+        //         var geometry = new THREE.BoxGeometry(0.25, 3, 1.1);
+        //         var material = new THREE.MeshStandardMaterial({color: 0x00ff00});
+        //
+        //         var mesh = new THREE.Mesh(geometry, material);
+        //         mesh.position.set(0, 1.5, 0);
+        //
+        //         var geometry2 = geometry.clone();
+        //         geometry2.rotateZ(THREE.Math.degToRad(90));
+        //         var mesh2 = new THREE.Mesh(geometry2, material);
+        //         mesh2.position.set(0, -1.5, 0);
+        //         mesh2.rotation.set(0, 0, THREE.Math.degToRad(90));
+        //
+        //         pivot = new THREE.Group();
+        //         pivot.position.set(0, 0, 0);
+        //         pivot.add(mesh);
+        //
+        //         return pivot;
+        //     }
+        //
+        //     function axleLine() {
+        //         var points = [
+        //             new THREE.Vector3(-20, 0, 0),
+        //             new THREE.Vector3(0, 0, 0),
+        //             new THREE.Vector3(20, 0, 0)
+        //         ];
+        //         var geometry = new THREE.BufferGeometry().setFromPoints(points);
+        //         var material = new THREE.LineBasicMaterial({color: 0xff0000});
+        //         var line = new THREE.Line(geometry, material);
+        //         return line;
+        //     }
+        //
+        //     var cart = cartMesh();
+        //     var pole = poleMesh();
+        //     var axle = axleLine();
+        //
+        //     // var cartpole = new THREE.Group();
+        //     // cartpole.add(cart, pole);
+        //
+        //     return [cart, pole, axle]
+        // }
+        //
+        // function update(meshes, state) {
+        //     var obs = state["obs"];
+        //     var attribution = state["attribution"];
+        //
+        //     var cart_position = obs[0];
+        //     var cart_velocity = obs[1];
+        //     var pole_angle = obs[2];
+        //     var pole_angular_velocity = obs[3];
+        //
+        //     var cart_position_attr = attribution[0];
+        //     var cart_velocity_attr = attribution[1];
+        //     var pole_angle_attr = attribution[2];
+        //     var pole_angular_velocity_attr = attribution[3];
+        //
+        //     var cartpole = meshes[0];
+        //     var pole = meshes[1];
+        //
+        //     cartpole.position.set(cart_position, 0, 0);
+        //     pole.position.set(cart_position, 0, 0);
+        //     pole.rotation.z = pole_angle;
+        //
+        //     document.getElementById("cartPositionAttr").style.width = Math.round(Math.abs(300 * cart_position_attr)) + "px";
+        //     document.getElementById("cartPositionAttr").classList.remove("positive");
+        //     document.getElementById("cartPositionAttr").classList.remove("negative");
+        //     document.getElementById("cartPositionAttr").classList.add(cart_position_attr > 0 ? "positive" : "negative");
+        //     document.getElementById("cartPositionAttrValue").innerText = cart_position_attr.toFixed(4);
+        //
+        //     document.getElementById("cartVelocityAttr").style.width = Math.round(Math.abs(300 * cart_velocity_attr)) + "px";
+        //     document.getElementById("cartVelocityAttr").classList.remove("positive");
+        //     document.getElementById("cartVelocityAttr").classList.remove("negative");
+        //     document.getElementById("cartVelocityAttr").classList.add(cart_velocity_attr > 0 ? "positive" : "negative");
+        //     document.getElementById("cartVelocityAttrValue").innerText = cart_velocity_attr.toFixed(4);
+        //
+        //     document.getElementById("poleAngleAttr").style.width = Math.round(Math.abs(300 * pole_angle_attr)) + "px";
+        //     document.getElementById("poleAngleAttr").classList.remove("positive");
+        //     document.getElementById("poleAngleAttr").classList.remove("negative");
+        //     document.getElementById("poleAngleAttr").classList.add(pole_angle_attr > 0 ? "positive" : "negative");
+        //     document.getElementById("poleAngleAttrValue").innerText = pole_angle_attr.toFixed(4);
+        //
+        //     document.getElementById("poleAngularVelocityAttr").style.width = Math.round(Math.abs(300 * pole_angular_velocity_attr)) + "px";
+        //     document.getElementById("poleAngularVelocityAttr").classList.remove("positive");
+        //     document.getElementById("poleAngularVelocityAttr").classList.remove("negative");
+        //     document.getElementById("poleAngularVelocityAttr").classList.add(pole_angular_velocity_attr > 0 ? "positive" : "negative");
+        //     document.getElementById("poleAngularVelocityAttrValue").innerText = pole_angular_velocity_attr.toFixed(4);
+        //
+        //     // var cart_position_importance = Math.max(Math.min(Math.floor((1 - cart_position_attr) * 255), 255), 0);
+        //     // var cart_color = 255 * 65536 + cart_position_importance * 255 + 0;
+        //     // console.log(cartpole);
+        //     // cartpole.material.color.setHex(cart_color);
+        //     // console.log("Setting color to:", cart_position_importance);
+        //     //
+        //     // console.log(cartpole);
+        //
+        //     // cart.translateX(cart_position);
+        //     // pole.translateX(cart_position);
+        //
+        //     // cart.geometry.computeBoundingBox();
+        //     // var cartCenter = new THREE.Vector3(0, 0, 0)
+        //     // cart.geometry.boundingBox.getCenter(cartCenter);
+        //     // console.log(cartCenter);
+        //     // pole.rotateAround(cartCenter, pole_angle);
+        // }
+        //
+        // var light = new THREE.DirectionalLight(0xffffff, 2);
+        // light.position.set(1, 5, 1);
+        // scene.add(light);
+        //
+        // var meshes = init();
+        // meshes.forEach(function (mesh, index) {
+        //     console.log("Adding mesh:", mesh)
+        //     scene.add(mesh);
+        // });
+        // scene.add(new THREE.AxesHelper(5));
+        //
+        // var episode = {{ episode|tojson }};
+        // document.getElementById("seekbar").setAttribute("max", episode.length - 1);
+        // document.getElementById("episodeLength").innerText = episode.length - 1;
+        //
+        // update(meshes, episode[0]);
+        //
+        // document.getElementById("seekbar").addEventListener("input", function (ev) {
+        //     var step_id = parseInt(ev.target.value);
+        //     var step = episode[step_id];
+        //     console.log("Moving to", step);
+        //     document.getElementById("episodeStep").innerText = step_id;
+        //     update(meshes, step);
+        // });
     </script>
 </body>
 </html>
