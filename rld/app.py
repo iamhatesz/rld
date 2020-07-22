@@ -25,7 +25,7 @@ def init(rollout: Rollout) -> Flask:
     @app.route("/trajectories", methods=["GET"])
     def trajectories():
         trajectories = list(range(len(rollout)))
-        return jsonify(trajectories=trajectories)
+        return jsonify(length=len(trajectories), trajectories=trajectories)
 
     @app.route("/trajectory/<index>", methods=["GET"])
     def trajectory(index: str):
