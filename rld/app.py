@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
 
 from rld.rollout import Rollout
 
@@ -12,7 +12,8 @@ def init(rollout: Rollout) -> Flask:
 
     @app.route("/trajectories", methods=["GET"])
     def trajectories():
-        raise NotImplementedError
+        trajectories = list(range(len(rollout)))
+        return jsonify(trajectories=trajectories)
 
     @app.route("/trajectory/<index>", methods=["GET"])
     def trajectory(index: int):
