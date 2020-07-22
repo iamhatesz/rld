@@ -5,7 +5,6 @@ import shelve
 from abc import ABC
 from collections import abc
 from dataclasses import dataclass
-from io import BufferedWriter
 from pathlib import Path
 from typing import Iterator, Optional, Any, Sequence, Union, List, BinaryIO
 
