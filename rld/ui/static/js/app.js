@@ -8,6 +8,7 @@ class App {
         this.currentTrajectoryLength = null;
 
         this.playing = null;
+        this.fps = 30;
 
         // UI elements we care about and modify during the scope of the application
         this.playButton = document.getElementById("play");
@@ -16,7 +17,8 @@ class App {
         this.previousStepButton = document.getElementById("previous-step");
         this.nextStepButton = document.getElementById("next-step");
         this.seekbar = document.getElementById("seekbar");
-        this.controls = document.querySelectorAll(".controls button, .controls input[type=range]")
+        this.fpsSelect = document.getElementById("fps");
+        this.controls = document.querySelectorAll(".controls button, .controls input[type=range], .controls select");
         this.playlistSelect = document.getElementById("playlist");
 
         this.trajectoryStep = document.getElementById("trajectory-step");
@@ -61,11 +63,7 @@ class App {
     }
 
     moveToTimestep(index) {
-        if (index < 0) {
-            index = 0;
-        } else if (index >= this.currentTrajectoryLength) {
-            index = this.currentTrajectoryLength - 1;
-        }
+        index = index.clamp(0, this.currentTrajectoryLength - 1);
         this.currentIndex = index;
         this.currentTimestep = this.currentTrajectory[this.currentIndex];
         this.updateTrajectoryProgress(this.currentIndex);
@@ -78,7 +76,7 @@ class App {
         this.playButton.addEventListener("click", event => {
             this.togglePlaying();
             event.preventDefault();
-        })
+        });
         this.toStartButton.addEventListener("click", event => {
             this.moveToTimestep(0);
             event.preventDefault();
@@ -86,7 +84,7 @@ class App {
         this.previousStepButton.addEventListener("click", event => {
             this.moveToTimestep(this.currentIndex - 1);
             event.preventDefault();
-        })
+        });
         this.nextStepButton.addEventListener("click", event => {
             this.moveToTimestep(this.currentIndex + 1);
             event.preventDefault();
@@ -98,6 +96,15 @@ class App {
         this.seekbar.addEventListener("change", event => {
             const index = parseInt(event.target.value);
             this.moveToTimestep(index);
+        });
+        this.fpsSelect.addEventListener("change", event => {
+            const fps = event.target.value;
+            this.fps = parseInt(fps);
+            const wasPlaying = this.playing != null;
+            if (wasPlaying) {
+                this.stopPlaying();
+                this.startPlaying();
+            }
         });
         this.playlistSelect.addEventListener("change", event => {
             const trajectory = event.target.value;
@@ -146,7 +153,8 @@ class App {
 
     startPlaying() {
         if (!this.playing) {
-            this.playing = setInterval(this.playTick.bind(this), 50);
+            const interval = 1000 / this.fps;
+            this.playing = setInterval(this.playTick.bind(this), interval);
         }
     }
 
@@ -176,6 +184,10 @@ class App {
         });
     }
 }
+
+Number.prototype.clamp = function (min, max) {
+    return Math.max(min, Math.min(this, max));
+};
 
 function removeAllChildren(node) {
     while (node.firstChild) {
