@@ -16,10 +16,38 @@ canvas {
     height: 500px;
 }
 
+.navigation {
+    width: 800px;
+}
+
 .controls {
-    width: 100%;
+    width: 80%;
+    float: left;
 }
 
 .seekbar {
+    width: 300px;
+}
+
+.playlist {
+    width: 20%;
+    float: right;
+}
+
+.playlist legend {
+    text-align: center;
+}
+
+.playlist select {
+    display: block;
+    width: 80px;
+    margin: 0 auto;
+}
+
+.debug-windows {
+
+}
+
+.debug-window {
 
 }
