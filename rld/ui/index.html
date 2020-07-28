@@ -17,19 +17,50 @@
 </head>
 <body>
     <div class="container">
-        <div class="scene"></div>
-        <div class="controls">
-            <form>
-                <fieldset>
-                    <legend>Step: <span id="episodeStep">0</span>/<span id="episodeLength">0</span></legend>
-                    <button>&lt;&lt;</button>
-                    <button>&lt;</button>
-                    <button>Play</button>
-                    <input type="range" min="0" max="100" value="0" class="seekbar" id="seekbar">
-                    <button>&gt;</button>
-                    <button>&gt;&gt;</button>
-                </fieldset>
-            </form>
+        <div class="scene" id="scene">
+            <div class="action-text" id="action"></div>
+            <div class="reward-text" id="reward"></div>
+        </div>
+        <div class="navigation">
+            <div class="controls">
+                <form>
+                    <fieldset>
+                        <legend>Step: <span id="trajectory-step">0</span>/<span id="trajectory-length">0</span></legend>
+                        <button id="to-start" disabled>&lt;&lt;</button>
+                        <button id="previous-step" disabled>&lt;</button>
+                        <button id="play" disabled>Play/Pause</button>
+                        <input type="range" min="0" max="100" value="0" class="seekbar" id="seekbar" disabled>
+                        <button id="next-step" disabled>&gt;</button>
+                        <button id="to-end" disabled>&gt;&gt;</button>
+                        <select id="fps" disabled>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="30" selected>30</option>
+                            <option value="50">50</option>
+                        </select>
+                    </fieldset>
+                </form>
+            </div>
+            <div class="playlist">
+                <form>
+                    <fieldset>
+                        <legend>Trajectory</legend>
+                        <select id="playlist">
+                            <option value="-1" selected disabled>Loading trajectories list...</option>
+                        </select>
+                    </fieldset>
+                </form>
+            </div>
+        </div>
+        <div class="debug-windows">
+            <div class="debug-window" id="debug-obs">
+
+            </div>
+            <div class="debug-window" id="debug-attr">
+
+            </div>
         </div>
     </div>
 
@@ -74,8 +105,20 @@
 <!--        </table>-->
 <!--    </div>-->
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r118/three.min.js"></script>
-    <script>
+<!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r118/three.min.js"></script>-->
+    <script src="/static/js/viewer.js" type="module"></script>
+    <script src="/static/js/app.js" type="module"></script>
+    <script type="module">
+        import { CartPoleViewer } from "/static/js/viewer.js";
+        import { App } from "/static/js/app.js";
+
+        const viewer = new CartPoleViewer(800, 500);
+        const app = new App("http://127.0.0.1:5000", viewer)
+        app.run();
+
+
+
+
         // var scene = new THREE.Scene();
         // var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         // var renderer = new THREE.WebGLRenderer({antialias: true});
