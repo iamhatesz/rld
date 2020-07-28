@@ -1,6 +1,23 @@
 import * as THREE from "./three.module.js";
 import { OrbitControls } from "./OrbitControls.js";
 
+Number.prototype.clamp = function (min, max) {
+    return Math.max(min, Math.min(this, max));
+};
+
+function attributationColor(value, max) {
+    const saturation = 1.0;
+    const lightnessAtMin = 0.35;
+    const lightnessAtMax = 1.0;
+    const huePositive = 0.3;
+    const hueNegative = 1.0;
+
+    const lightness = (lightnessAtMin + (1.0 - (Math.abs(value) / max).clamp(0, max)) * (lightnessAtMax - lightnessAtMin));
+    const hue = value > 0 ? huePositive : hueNegative;
+
+    return [hue, saturation, lightness];
+}
+
 class Viewer {
     constructor(width, height) {
         this.width = width;
@@ -14,7 +31,7 @@ class Viewer {
         });
         this.renderer.setSize(this.width, this.height);
 
-        this.light = new THREE.DirectionalLight(0xffffff, 2);
+        this.light = new THREE.DirectionalLight(0xffffff, 1.5);
         this.light.position.fromArray(this.lightPosition().toArray());
         this.scene.add(this.light);
 
@@ -114,6 +131,16 @@ class CartPoleViewer extends Viewer {
         this.cart.position.set(cartPosition, 0, 0);
         this.pole.position.set(cartPosition, 0, 0);
         this.pole.rotation.z = poleAngle;
+
+        if (timestep["attributations"] !== null) {
+            const attr = timestep["attributations"]["data"];
+            const cartTotal = attr[0] + attr[1];
+            const poleTotal = attr[2] + attr[3];
+            const [cartH, cartS, cartL] = attributationColor(cartTotal, 1);
+            const [poleH, poleS, poleL] = attributationColor(poleTotal, 1);
+            this.cart.material.color.setHSL(cartH, cartS, cartL);
+            this.pole.children[0].material.color.setHSL(poleH, poleS, poleL);
+        }
     }
 
     centerOfScene() {
@@ -122,6 +149,10 @@ class CartPoleViewer extends Viewer {
 
     cameraInitialPosition() {
         return new THREE.Vector3(0, 3, 5);
+    }
+
+    lightPosition() {
+        return new THREE.Vector3(0, 5, 10);
     }
 
     stringifyAction(action) {
