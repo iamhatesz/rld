@@ -1,6 +1,7 @@
 class App {
-    constructor(backendUrl) {
+    constructor(backendUrl, viewer) {
         this.backendUrl = backendUrl;
+        this.viewer = viewer;
 
         this.currentTrajectory = null;
         this.currentTimestep = null;
@@ -25,6 +26,8 @@ class App {
         this.trajectoryLength = document.getElementById("trajectory-length");
 
         this.sceneHolder = document.getElementById("scene");
+        this.actionText = document.getElementById("action");
+        this.rewardText = document.getElementById("reward");
 
         this.debugObsBox = document.getElementById("debug-obs");
         this.debugAttrBox = document.getElementById("debug-attr");
@@ -32,6 +35,7 @@ class App {
 
     run() {
         this.initEventListeners();
+        this.initViewer();
         this.fetchTrajectoriesList();
     }
 
@@ -67,7 +71,10 @@ class App {
         this.currentIndex = index;
         this.currentTimestep = this.currentTrajectory[this.currentIndex];
         this.updateTrajectoryProgress(this.currentIndex);
+        this.updateActionText(this.currentTimestep["action"]);
+        this.updateRewardText(this.currentTimestep["reward"]);
         this.updateDebugWindows(this.currentTimestep["obs"], this.currentTimestep["attributations"]);
+        this.viewer.update(this.currentTimestep);
     }
 
 
@@ -112,6 +119,11 @@ class App {
         });
     }
 
+    initViewer() {
+        this.sceneHolder.append(this.viewer.rendererDOMElement());
+        this.viewer.init();
+    }
+
     clearTrajectoriesList() {
         removeAllChildren(this.playlistSelect);
     }
@@ -136,6 +148,14 @@ class App {
     updateTrajectoryProgress(index) {
         this.trajectoryStep.innerText = index;
         this.seekbar.value = index;
+    }
+
+    updateActionText(action) {
+        this.actionText.innerText = this.viewer.stringifyAction(action);
+    }
+
+    updateRewardText(reward) {
+        this.rewardText.innerText = reward;
     }
 
     updateDebugWindows(obs, attr) {
@@ -202,3 +222,5 @@ function validateResponse(response) {
     }
     return response.json();
 }
+
+export { App };

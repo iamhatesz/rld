@@ -17,7 +17,10 @@
 </head>
 <body>
     <div class="container">
-        <div class="scene" id="scene"></div>
+        <div class="scene" id="scene">
+            <div class="action-text" id="action"></div>
+            <div class="reward-text" id="reward"></div>
+        </div>
         <div class="navigation">
             <div class="controls">
                 <form>
@@ -102,93 +105,16 @@
 <!--        </table>-->
 <!--    </div>-->
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r118/three.min.js"></script>
-    <script src="/static/js/app.js"></script>
-    <script>
-        const app = new App("http://127.0.0.1:5000")
+<!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r118/three.min.js"></script>-->
+    <script src="/static/js/viewer.js" type="module"></script>
+    <script src="/static/js/app.js" type="module"></script>
+    <script type="module">
+        import { CartPoleViewer } from "/static/js/viewer.js";
+        import { App } from "/static/js/app.js";
+
+        const viewer = new CartPoleViewer(800, 500);
+        const app = new App("http://127.0.0.1:5000", viewer)
         app.run();
-
-        // function removeAllChildren(node) {
-        //     while (node.firstChild) {
-        //         node.removeChild(node.lastChild);
-        //     }
-        // }
-        //
-        // function getEndpointURL(endpoint) {
-        //     return BACKEND_URL + endpoint;
-        // }
-        //
-        // function validateResponse(response) {
-        //     const contentType = response.headers.get("content-type");
-        //     if (!contentType || !contentType.includes("application/json")) {
-        //         throw new TypeError("Expected response to be in JSON format.")
-        //     }
-        //     return response.json();
-        // }
-        //
-        // function updateProgress(index) {
-        //     const trajectoryStepObj = document.getElementById("trajectory-step");
-        //     trajectoryStepObj.innerText = index;
-        //     const seekbarObj = document.getElementById("seekbar");
-        //     seekbarObj.value = index;
-        // }
-        //
-        // function updateTrajectoryLength(length) {
-        //     const trajectoryLengthObj = document.getElementById("trajectory-length");
-        //     trajectoryLengthObj.innerText = length;
-        //     const seekbarObj = document.getElementById("seekbar");
-        //     seekbarObj.max = length;
-        // }
-        //
-        // function moveToTimestep(trajectory, index) {
-        //     const timestep = trajectory[index];
-        //     const timestepObsObj = document.getElementById("timestep-obs");
-        //     timestepObsObj.innerText = JSON.stringify(timestep.obs);
-        //     const timestepAttrObj = document.getElementById("timestep-attr");
-        //     timestepAttrObj.innerText = JSON.stringify(timestep.attributations)
-        // }
-        //
-        // let isTrajectoriesListLoaded = false;
-        // let isTrajectoryLoaded = false;
-        // let isPlaying = false;
-        //
-        // function fetchTrajectoriesList() {
-        //     fetch(getEndpointURL("/trajectories"))
-        //         .then(validateResponse)
-        //         .then(function (data) {
-        //             console.log(data);
-        //             removeAllChildren(playlistObj);
-        //             const options = data["trajectories"]
-        //                 .map(function (index) {
-        //                     const option = document.createElement("option");
-        //                     option.value = index;
-        //                     option.innerText = index;
-        //                     playlistObj.appendChild(option);
-        //                 });
-        //             playlistObj.dispatchEvent(new Event("change"));
-        //         });
-        // }
-        //
-        // function fetchTrajectory(index) {
-        //     fetch(getEndpointURL("/trajectory/" + index))
-        //         .then(validateResponse)
-        //         .then(function (data) {
-        //             console.log(data);
-        //             updateProgress(0);
-        //             updateTrajectoryLength(data.length);
-        //             moveToTimestep(data.timesteps, 0);
-        //         });
-        // }
-        //
-        // const BACKEND_URL = "http://127.0.0.1:5000";
-        //
-        // const playlistObj = document.getElementById("playlist");
-        // playlistObj.addEventListener("change", function (event) {
-        //     fetchTrajectory(event.target.value);
-        // });
-        //
-        // fetchTrajectoriesList();
-
 
 
 

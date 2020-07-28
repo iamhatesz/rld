@@ -12,8 +12,28 @@ canvas {
 }
 
 .scene {
+    position: relative;
     width: 800px;
     height: 500px;
+    margin: 0;
+    padding: 0;
+}
+
+.action-text {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: #ffffff;
+    z-index: 100;
+}
+
+.reward-text {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: #ffffff;
+    z-index: 100;
+    text-align: right;
 }
 
 .navigation {
