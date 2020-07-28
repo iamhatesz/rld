@@ -8,10 +8,16 @@ class Viewer {
 
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
+
         this.renderer = new THREE.WebGLRenderer({
             antialias: true
         });
         this.renderer.setSize(this.width, this.height);
+
+        this.light = new THREE.DirectionalLight(0xffffff, 2);
+        this.light.position.fromArray(this.lightPosition().toArray());
+        this.scene.add(this.light);
+
         this.controls = new OrbitControls(this.camera, this.rendererDOMElement());
         this.controls.object.position.fromArray(this.cameraInitialPosition().toArray());
         this.controls.target = this.centerOfScene();
@@ -43,6 +49,10 @@ class Viewer {
         return new THREE.Vector3(5, 5, 5);
     }
 
+    lightPosition() {
+        return new THREE.Vector3(-5, 5, 5);
+    }
+
     animate() {
         requestAnimationFrame(this.animate.bind(this));
         this.controls.update();
@@ -63,15 +73,15 @@ class CartPoleViewer extends Viewer {
 
         this.cart = new THREE.Mesh(
             new THREE.BoxGeometry(CartPoleViewer.CART_LENGTH, CartPoleViewer.CART_HEIGHT, CartPoleViewer.CART_WIDTH),
-            new THREE.MeshBasicMaterial({
-                color: 0x00ff00
+            new THREE.MeshStandardMaterial({
+                color: 0xffffff
             })
         );
 
         const realPole = new THREE.Mesh(
             new THREE.BoxGeometry(CartPoleViewer.POLE_LENGTH, CartPoleViewer.POLE_HEIGHT, CartPoleViewer.POLE_WIDTH),
-            new THREE.MeshBasicMaterial({
-                color: 0x00ff00
+            new THREE.MeshStandardMaterial({
+                color: 0xffffff
             })
         );
         realPole.position.set(0, CartPoleViewer.POLE_HEIGHT / 2, 0);
