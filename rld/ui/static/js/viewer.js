@@ -78,11 +78,22 @@ class CartPoleViewer extends Viewer {
         this.pole = new THREE.Group();
         this.pole.position.set(0, 0, 0);
         this.pole.add(realPole);
+
+        this.axle = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-20, 0, 0),
+                new THREE.Vector3(20, 0, 0)
+            ]),
+            new THREE.LineBasicMaterial({
+                color: 0xffffff
+            })
+        );
     }
 
     init() {
         this.scene.add(this.cart);
         this.scene.add(this.pole);
+        this.scene.add(this.axle);
     }
 
     update(timestep) {
