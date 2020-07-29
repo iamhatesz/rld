@@ -120,7 +120,7 @@ class App {
     }
 
     initViewer() {
-        this.sceneHolder.append(this.viewer.rendererDOMElement());
+        this.sceneHolder.append(this.viewer.domElement());
         this.viewer.init();
     }
 

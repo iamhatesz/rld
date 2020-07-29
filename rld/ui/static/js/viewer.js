@@ -22,6 +22,28 @@ class Viewer {
     constructor(width, height) {
         this.width = width;
         this.height = height;
+    }
+
+    domElement() {
+        throw new Error("Not implemented");
+    }
+
+    init() {
+        console.warn("Calling init() method, which is not implemented.")
+    }
+
+    update(timestep) {
+        console.warn("Calling update() method, which is not implemented.")
+    }
+
+    stringifyAction(action) {
+        return "";
+    }
+}
+
+class WebGLViewer extends Viewer {
+    constructor(width, height) {
+        super(width, height);
 
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
@@ -35,27 +57,15 @@ class Viewer {
         this.light.position.fromArray(this.lightPosition().toArray());
         this.scene.add(this.light);
 
-        this.controls = new OrbitControls(this.camera, this.rendererDOMElement());
+        this.controls = new OrbitControls(this.camera, this.domElement());
         this.controls.object.position.fromArray(this.cameraInitialPosition().toArray());
         this.controls.target = this.centerOfScene();
 
         this.animate();
     }
 
-    rendererDOMElement() {
+    domElement() {
         return this.renderer.domElement;
-    }
-
-    init() {
-        console.warn("Calling init() method, which is not implemented.")
-    }
-
-    update(timestep) {
-        console.warn("Calling update() method, which is not implemented.")
-    }
-
-    stringifyAction(action) {
-        return "";
     }
 
     centerOfScene() {
@@ -77,7 +87,7 @@ class Viewer {
     }
 }
 
-class CartPoleViewer extends Viewer {
+class CartPoleViewer extends WebGLViewer {
     static CART_LENGTH = 3;
     static CART_WIDTH = 1;
     static CART_HEIGHT = 1;
