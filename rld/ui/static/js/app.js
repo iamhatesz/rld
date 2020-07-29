@@ -1,7 +1,8 @@
 class App {
-    constructor(backendUrl, viewer) {
+    constructor(backendUrl, viewer, populateDebugWindows = false) {
         this.backendUrl = backendUrl;
         this.viewer = viewer;
+        this.populateDebugWindows = populateDebugWindows;
 
         this.currentTrajectory = null;
         this.currentTimestep = null;
@@ -73,7 +74,9 @@ class App {
         this.updateTrajectoryProgress(this.currentIndex);
         this.updateActionText(this.currentTimestep["action"]);
         this.updateRewardText(this.currentTimestep["reward"]);
-        this.updateDebugWindows(this.currentTimestep["obs"], this.currentTimestep["attributations"]);
+        if (this.populateDebugWindows) {
+            this.updateDebugWindows(this.currentTimestep["obs"], this.currentTimestep["attributations"]);
+        }
         this.viewer.update(this.currentTimestep);
     }
 

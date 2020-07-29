@@ -12,7 +12,7 @@ function attributationColor(value, max) {
     const huePositive = 0.3;
     const hueNegative = 1.0;
 
-    const lightness = (lightnessAtMin + (1.0 - (Math.abs(value) / max).clamp(0, max)) * (lightnessAtMax - lightnessAtMin));
+    const lightness = (lightnessAtMin + (1.0 - (Math.abs(value) / max).clamp(0, 1)) * (lightnessAtMax - lightnessAtMin));
     const hue = value > 0 ? huePositive : hueNegative;
 
     return [hue, saturation, lightness];
@@ -57,10 +57,22 @@ class ImageViewer extends Viewer {
         this.obsChannels = obsChannels;
         this.frameStackingInChannelDim = frameStackingInChannelDim;
 
-        this.image = document.createElement("img");
-        this.image.setAttribute("alt", "Observation");
-        this.image.setAttribute("width", this.width);
-        this.image.setAttribute("height", this.height);
+        this.obsImage = document.createElement("img");
+        this.obsImage.setAttribute("class", "obs-image");
+        this.obsImage.setAttribute("alt", "Observation");
+        this.obsImage.setAttribute("width", this.width);
+        this.obsImage.setAttribute("height", this.height);
+
+        this.attrImage = document.createElement("img");
+        this.attrImage.setAttribute("class", "attr-image");
+        this.attrImage.setAttribute("alt", "Attributation");
+        this.attrImage.setAttribute("width", this.width);
+        this.attrImage.setAttribute("height", this.height);
+
+        this.container = document.createElement("div")
+        this.container.setAttribute("class", "image-container");
+        this.container.append(this.obsImage)
+        this.container.append(this.attrImage)
 
         this.canvas = document.createElement("canvas");
         this.canvas.setAttribute("width", this.obsWidth);
@@ -71,12 +83,18 @@ class ImageViewer extends Viewer {
     }
 
     domElement() {
-        return this.image;
+        return this.container;
     }
 
     update(timestep) {
         const obs = timestep["obs"];
+        this.obsImage.setAttribute("src", this.encodedObs(obs));
 
+        const attr = timestep["attributations"]["data"];
+        this.attrImage.setAttribute("src", this.encodedAttr(attr));
+    }
+
+    encodedObs(obs) {
         for (let y = 0; y < this.obsHeight; y++) {
             for (let x = 0; x < this.obsWidth; x++) {
                 const pos = (y * this.obsWidth + x) * 4;
@@ -98,8 +116,30 @@ class ImageViewer extends Viewer {
 
         this.imageData.data.set(this.buffer);
         this.ctx.putImageData(this.imageData, 0, 0);
+        return this.canvas.toDataURL();
+    }
 
-        this.image.setAttribute("src", this.canvas.toDataURL());
+    encodedAttr(attr) {
+        for (let y = 0; y < this.obsHeight; y++) {
+            for (let x = 0; x < this.obsWidth; x++) {
+                const pos = (y * this.obsWidth + x) * 4;
+                if (this.frameStackingInChannelDim) {
+                    const [h, s, l] = attributationColor(attr[x][y][0], 0.001);
+                    const pixelColor = new THREE.Color().setHSL(h, s, l);
+
+                    this.buffer[pos] = floatColorToIntColor(pixelColor.r);
+                    this.buffer[pos + 1] = floatColorToIntColor(pixelColor.g);
+                    this.buffer[pos + 2] = floatColorToIntColor(pixelColor.b);
+                    this.buffer[pos + 3] = 64;
+                } else {
+                    // Not yet implemented
+                }
+            }
+        }
+
+        this.imageData.data.set(this.buffer);
+        this.ctx.putImageData(this.imageData, 0, 0);
+        return this.canvas.toDataURL();
     }
 }
 
