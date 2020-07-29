@@ -49,9 +49,12 @@ class ImageViewer extends Viewer {
     /**
      * This Viewer expects observation to be a float array of shape CxHxW, where each value is in range [0; 1].
      */
-    constructor(width, height, frameStackingInChannelDim = false) {
+    constructor(width, height, obsWidth, obsHeight, obsChannels, frameStackingInChannelDim = false) {
         super(width, height);
 
+        this.obsWidth = obsWidth;
+        this.obsHeight = obsHeight;
+        this.obsChannels = obsChannels;
         this.frameStackingInChannelDim = frameStackingInChannelDim;
 
         this.image = document.createElement("img");
@@ -60,11 +63,11 @@ class ImageViewer extends Viewer {
         this.image.setAttribute("height", this.height);
 
         this.canvas = document.createElement("canvas");
-        this.canvas.setAttribute("width", this.width);
-        this.canvas.setAttribute("height", this.height);
+        this.canvas.setAttribute("width", this.obsWidth);
+        this.canvas.setAttribute("height", this.obsHeight);
         this.ctx = this.canvas.getContext("2d");
-        this.buffer = new Uint8ClampedArray(this.width * this.height * 4);
-        this.imageData = new ImageData(this.buffer, this.width, this.height);
+        this.buffer = new Uint8ClampedArray(this.obsWidth * this.obsHeight * 4);
+        this.imageData = new ImageData(this.buffer, this.obsWidth, this.obsHeight);
     }
 
     domElement() {
@@ -74,9 +77,9 @@ class ImageViewer extends Viewer {
     update(timestep) {
         const obs = timestep["obs"];
 
-        for (let y = 0; y < this.height; y++) {
-            for (let x = 0; x < this.width; x++) {
-                const pos = (y * this.width + x) * 4;
+        for (let y = 0; y < this.obsHeight; y++) {
+            for (let x = 0; x < this.obsWidth; x++) {
+                const pos = (y * this.obsWidth + x) * 4;
                 if (this.frameStackingInChannelDim) {
                     // We are using first frame in a stack and treating this as a greyscale value
                     this.buffer[pos] = floatColorToIntColor(obs[x][y][0]);
