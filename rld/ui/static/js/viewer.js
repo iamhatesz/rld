@@ -18,6 +18,10 @@ function attributationColor(value, max) {
     return [hue, saturation, lightness];
 }
 
+function floatColorToIntColor(value) {
+    return Math.floor(value.clamp(0, 1) * 255);
+}
+
 class Viewer {
     constructor(width, height) {
         this.width = width;
@@ -29,15 +33,70 @@ class Viewer {
     }
 
     init() {
-        console.warn("Calling init() method, which is not implemented.")
+        console.warn("Calling init() method, which is not implemented.");
     }
 
     update(timestep) {
-        console.warn("Calling update() method, which is not implemented.")
+        console.warn("Calling update() method, which is not implemented.");
     }
 
     stringifyAction(action) {
         return "";
+    }
+}
+
+class ImageViewer extends Viewer {
+    /**
+     * This Viewer expects observation to be a float array of shape CxHxW, where each value is in range [0; 1].
+     */
+    constructor(width, height, frameStackingInChannelDim = false) {
+        super(width, height);
+
+        this.frameStackingInChannelDim = frameStackingInChannelDim;
+
+        this.image = document.createElement("img");
+        this.image.setAttribute("alt", "Observation");
+        this.image.setAttribute("width", this.width);
+        this.image.setAttribute("height", this.height);
+
+        this.canvas = document.createElement("canvas");
+        this.canvas.setAttribute("width", this.width);
+        this.canvas.setAttribute("height", this.height);
+        this.ctx = this.canvas.getContext("2d");
+        this.buffer = new Uint8ClampedArray(this.width * this.height * 4);
+        this.imageData = new ImageData(this.buffer, this.width, this.height);
+    }
+
+    domElement() {
+        return this.image;
+    }
+
+    update(timestep) {
+        const obs = timestep["obs"];
+
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                const pos = (y * this.width + x) * 4;
+                if (this.frameStackingInChannelDim) {
+                    // We are using first frame in a stack and treating this as a greyscale value
+                    this.buffer[pos] = floatColorToIntColor(obs[x][y][0]);
+                    this.buffer[pos + 1] = floatColorToIntColor(obs[x][y][0]);
+                    this.buffer[pos + 2] = floatColorToIntColor(obs[x][y][0]);
+                    this.buffer[pos + 3] = 255;
+                } else {
+                    // We are assuming RGB coding here
+                    this.buffer[pos] = floatColorToIntColor(obs[x][y][0]);
+                    this.buffer[pos + 1] = floatColorToIntColor(obs[x][y][1]);
+                    this.buffer[pos + 2] = floatColorToIntColor(obs[x][y][2]);
+                    this.buffer[pos + 3] = 255;
+                }
+            }
+        }
+
+        this.imageData.data.set(this.buffer);
+        this.ctx.putImageData(this.imageData, 0, 0);
+
+        this.image.setAttribute("src", this.canvas.toDataURL());
     }
 }
 
@@ -174,4 +233,4 @@ class CartPoleViewer extends WebGLViewer {
     }
 }
 
-export { Viewer, CartPoleViewer };
+export { ImageViewer, CartPoleViewer };

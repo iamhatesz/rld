@@ -109,10 +109,11 @@
     <script src="/static/js/viewer.js" type="module"></script>
     <script src="/static/js/app.js" type="module"></script>
     <script type="module">
-        import { CartPoleViewer } from "/static/js/viewer.js";
+        import { CartPoleViewer, ImageViewer } from "/static/js/viewer.js";
         import { App } from "/static/js/app.js";
 
-        const viewer = new CartPoleViewer(800, 500);
+        // const viewer = new CartPoleViewer(800, 500);
+        const viewer = new ImageViewer(84, 84, true);
         const app = new App("http://127.0.0.1:5000", viewer)
         app.run();
 
