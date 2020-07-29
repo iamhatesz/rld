@@ -142,11 +142,11 @@ class App {
 
     updateTrajectoryRange(range) {
         this.trajectoryLength.innerText = range;
-        this.seekbar.max = range;
+        this.seekbar.max = range - 1;
     }
 
     updateTrajectoryProgress(index) {
-        this.trajectoryStep.innerText = index;
+        this.trajectoryStep.innerText = index + 1;
         this.seekbar.value = index;
     }
 
