@@ -49,13 +49,11 @@ class ImageViewer extends Viewer {
     /**
      * This Viewer expects observation to be a float array of shape CxHxW, where each value is in range [0; 1].
      */
-    constructor(width, height, obsWidth, obsHeight, obsChannels, frameStackingInChannelDim = false) {
+    constructor(width, height, obsWidth, obsHeight) {
         super(width, height);
 
         this.obsWidth = obsWidth;
         this.obsHeight = obsHeight;
-        this.obsChannels = obsChannels;
-        this.frameStackingInChannelDim = frameStackingInChannelDim;
 
         this.obsImage = document.createElement("img");
         this.obsImage.setAttribute("class", "obs-image");
@@ -98,19 +96,10 @@ class ImageViewer extends Viewer {
         for (let y = 0; y < this.obsHeight; y++) {
             for (let x = 0; x < this.obsWidth; x++) {
                 const pos = (y * this.obsWidth + x) * 4;
-                if (this.frameStackingInChannelDim) {
-                    // We are using first frame in a stack and treating this as a greyscale value
-                    this.buffer[pos] = floatColorToIntColor(obs[x][y][0]);
-                    this.buffer[pos + 1] = floatColorToIntColor(obs[x][y][0]);
-                    this.buffer[pos + 2] = floatColorToIntColor(obs[x][y][0]);
-                    this.buffer[pos + 3] = 255;
-                } else {
-                    // We are assuming RGB coding here
-                    this.buffer[pos] = floatColorToIntColor(obs[x][y][0]);
-                    this.buffer[pos + 1] = floatColorToIntColor(obs[x][y][1]);
-                    this.buffer[pos + 2] = floatColorToIntColor(obs[x][y][2]);
-                    this.buffer[pos + 3] = 255;
-                }
+                this.buffer[pos] = floatColorToIntColor(obs[x][y][0]);
+                this.buffer[pos + 1] = floatColorToIntColor(obs[x][y][0]);
+                this.buffer[pos + 2] = floatColorToIntColor(obs[x][y][0]);
+                this.buffer[pos + 3] = 255;
             }
         }
 
@@ -123,17 +112,13 @@ class ImageViewer extends Viewer {
         for (let y = 0; y < this.obsHeight; y++) {
             for (let x = 0; x < this.obsWidth; x++) {
                 const pos = (y * this.obsWidth + x) * 4;
-                if (this.frameStackingInChannelDim) {
-                    const [h, s, l] = attributationColor(attr[x][y][0], 0.001);
-                    const pixelColor = new THREE.Color().setHSL(h, s, l);
+                const [h, s, l] = attributationColor(attr[x][y], 0.001);
+                const pixelColor = new THREE.Color().setHSL(h, s, l);
 
-                    this.buffer[pos] = floatColorToIntColor(pixelColor.r);
-                    this.buffer[pos + 1] = floatColorToIntColor(pixelColor.g);
-                    this.buffer[pos + 2] = floatColorToIntColor(pixelColor.b);
-                    this.buffer[pos + 3] = 64;
-                } else {
-                    // Not yet implemented
-                }
+                this.buffer[pos] = floatColorToIntColor(pixelColor.r);
+                this.buffer[pos + 1] = floatColorToIntColor(pixelColor.g);
+                this.buffer[pos + 2] = floatColorToIntColor(pixelColor.b);
+                this.buffer[pos + 3] = 255;
             }
         }
 

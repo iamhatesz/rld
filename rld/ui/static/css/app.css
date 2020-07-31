@@ -37,21 +37,20 @@ canvas {
 }
 
 .image-container {
-    position: relative;
+
 }
 
 .image-container img {
-    position: absolute;
-    top: 0;
-    left: 0;
+    display: block;
+    float: left;
 }
 
 .image-container .obs-image {
-    z-index: 10;
+
 }
 
 .image-container .attr-image {
-    z-index: 20;
+
 }
 
 .navigation {
