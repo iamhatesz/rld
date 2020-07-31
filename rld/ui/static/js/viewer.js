@@ -41,7 +41,7 @@ class Viewer {
     }
 
     stringifyAction(action) {
-        return "";
+        return JSON.stringify(action);
     }
 }
 
