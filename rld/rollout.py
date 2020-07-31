@@ -3,10 +3,10 @@ from __future__ import annotations
 import pickle
 import shelve
 from abc import ABC
-from collections import abc
+from collections import abc, OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Optional, Any, Sequence, Union, List, BinaryIO
+from typing import Iterator, Optional, Any, Sequence, Union, List, BinaryIO, Callable
 
 import gym
 import numpy as np
@@ -28,16 +28,27 @@ class ActionAttributation(ABC):
     def is_complied(self, obs_space: gym.Space) -> bool:
         raise NotImplementedError
 
+    def map(
+        self, fn: Callable[[AttributationLike], AttributationLike]
+    ) -> ActionAttributation:
+        raise NotImplementedError
+
 
 @dataclass
 class DiscreteActionAttributation(ActionAttributation):
     data: AttributationLike
 
     def is_complied(self, obs_space: gym.Space) -> bool:
+        obs_space = remove_value_constraints_from_space(obs_space)
         return obs_space.contains(self.data)
 
     def action(self) -> AttributationLike:
         return self.data
+
+    def map(
+        self, fn: Callable[[AttributationLike], AttributationLike]
+    ) -> ActionAttributation:
+        return DiscreteActionAttributation(fn(self.data))
 
 
 @dataclass
@@ -45,8 +56,16 @@ class MultiDiscreteActionAttributation(ActionAttributation):
     data: Sequence[AttributationLike]
 
     def is_complied(self, obs_space: gym.Space) -> bool:
+        obs_space = remove_value_constraints_from_space(obs_space)
         return all(
             [obs_space.contains(self.action(i)) for i in range(self.num_actions())]
+        )
+
+    def map(
+        self, fn: Callable[[AttributationLike], AttributationLike]
+    ) -> ActionAttributation:
+        return MultiDiscreteActionAttributation(
+            [fn(self.action(i)) for i in range(self.num_actions())]
         )
 
     def num_actions(self) -> int:
@@ -61,8 +80,16 @@ class TupleActionAttributation(ActionAttributation):
     data: Sequence[AttributationLike]
 
     def is_complied(self, obs_space: gym.Space) -> bool:
+        obs_space = remove_value_constraints_from_space(obs_space)
         return all(
             [obs_space.contains(self.space(i)) for i in range(self.num_spaces())]
+        )
+
+    def map(
+        self, fn: Callable[[AttributationLike], AttributationLike]
+    ) -> ActionAttributation:
+        return TupleActionAttributation(
+            [fn(self.space(i)) for i in range(self.num_spaces())]
         )
 
     def num_spaces(self) -> int:
@@ -225,3 +252,29 @@ class ToFileRolloutWriter(RolloutWriter):
 
     def flush(self):
         self._rollout_file.write(pickle.dumps(Rollout(self._trajectories)))
+
+
+def remove_value_constraints_from_space(obs_space: gym.Space):
+    if isinstance(obs_space, gym.spaces.Box):
+        return gym.spaces.Box(
+            low=float("-inf"), high=float("+inf"), shape=obs_space.shape
+        )
+    elif isinstance(obs_space, gym.spaces.Dict):
+        return gym.spaces.Dict(
+            OrderedDict(
+                [
+                    (k, remove_value_constraints_from_space(space))
+                    for k, space in obs_space.spaces.items()
+                ]
+            )
+        )
+    else:
+        raise NotImplementedError
+
+
+def remove_channel_dim_from_image_space(obs_space: gym.spaces.Box) -> gym.spaces.Box:
+    return gym.spaces.Box(
+        low=obs_space.low[..., 0],
+        high=obs_space.high[..., 0],
+        shape=obs_space.shape[:-1],
+    )

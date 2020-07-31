@@ -1,3 +1,6 @@
+from enum import Enum
+from typing import Any, Type
+
 import gym
 
 
@@ -7,6 +10,11 @@ class ActionSpaceNotSupported(Exception):
             f"The action space `{action_space}` is not currently supported. The "
             f"currently supported action spaces are: Discrete, MultiDiscrete, Tuple."
         )
+
+
+class EnumValueNotFound(Exception):
+    def __init__(self, value: Any, enum: Type[Enum]):
+        super().__init__(f"The value `{value}` was not found in enum `{enum}`")
 
 
 class APIException(Exception):
