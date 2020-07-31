@@ -39,17 +39,17 @@ class BoxObsTupleActionEnv(BaseEnv):
 
 
 class ImageObsDiscreteActionEnv(BaseEnv):
-    observation_space = gym.spaces.Box(-1, 1, shape=(84, 84, 4))
+    observation_space = gym.spaces.Box(0, 1, shape=(84, 84, 4))
     action_space = gym.spaces.Discrete(4)
 
 
 class ImageObsMultiDiscreteActionEnv(BaseEnv):
-    observation_space = gym.spaces.Box(-1, 1, shape=(84, 84, 4))
+    observation_space = gym.spaces.Box(0, 1, shape=(84, 84, 4))
     action_space = gym.spaces.MultiDiscrete([4, 2])
 
 
 class ImageObsTupleActionEnv(BaseEnv):
-    observation_space = gym.spaces.Box(-1, 1, shape=(84, 84, 4))
+    observation_space = gym.spaces.Box(0, 1, shape=(84, 84, 4))
     action_space = gym.spaces.Tuple((gym.spaces.Discrete(2), gym.spaces.Discrete(2)))
 
 

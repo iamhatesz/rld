@@ -1,7 +1,8 @@
 class App {
-    constructor(backendUrl, viewer) {
+    constructor(backendUrl, viewer, populateDebugWindows = false) {
         this.backendUrl = backendUrl;
         this.viewer = viewer;
+        this.populateDebugWindows = populateDebugWindows;
 
         this.currentTrajectory = null;
         this.currentTimestep = null;
@@ -73,7 +74,9 @@ class App {
         this.updateTrajectoryProgress(this.currentIndex);
         this.updateActionText(this.currentTimestep["action"]);
         this.updateRewardText(this.currentTimestep["reward"]);
-        this.updateDebugWindows(this.currentTimestep["obs"], this.currentTimestep["attributations"]);
+        if (this.populateDebugWindows) {
+            this.updateDebugWindows(this.currentTimestep["obs"], this.currentTimestep["attributations"]);
+        }
         this.viewer.update(this.currentTimestep);
     }
 
@@ -120,7 +123,7 @@ class App {
     }
 
     initViewer() {
-        this.sceneHolder.append(this.viewer.rendererDOMElement());
+        this.sceneHolder.append(this.viewer.domElement());
         this.viewer.init();
     }
 
@@ -142,11 +145,11 @@ class App {
 
     updateTrajectoryRange(range) {
         this.trajectoryLength.innerText = range;
-        this.seekbar.max = range;
+        this.seekbar.max = range - 1;
     }
 
     updateTrajectoryProgress(index) {
-        this.trajectoryStep.innerText = index;
+        this.trajectoryStep.innerText = index + 1;
         this.seekbar.value = index;
     }
 

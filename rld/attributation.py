@@ -3,7 +3,7 @@ from collections import abc
 from dataclasses import dataclass, replace
 from enum import IntEnum
 from functools import partial
-from typing import Optional
+from typing import Optional, Union
 
 import gym
 import numpy as np
@@ -13,7 +13,7 @@ from gym.spaces import flatten, unflatten
 from ray.rllib.models.modelv2 import restore_original_dimensions
 from ray.rllib.utils.torch_ops import convert_to_non_torch_type
 
-from rld.exception import ActionSpaceNotSupported
+from rld.exception import ActionSpaceNotSupported, EnumValueNotFound
 from rld.model import Model
 from rld.rollout import (
     Trajectory,
@@ -21,8 +21,81 @@ from rld.rollout import (
     DiscreteActionAttributation,
     MultiDiscreteActionAttributation,
     TupleActionAttributation,
+    ActionAttributation,
+    remove_channel_dim_from_image_space,
 )
-from rld.typing import BaselineBuilder, ObsLike
+from rld.typing import BaselineBuilder, ObsLike, AttributationLike
+
+
+class AttributationVisualizationSign(IntEnum):
+    ALL = 0
+    POSITIVE = 1
+    NEGATIVE = 2
+    ABSOLUTE_VALUE = 3
+
+
+class AttributationProcessor:
+    def transform(self, attr: ActionAttributation) -> ActionAttributation:
+        return attr.map(self._transform)
+
+    def _transform(self, attr: AttributationLike) -> AttributationLike:
+        raise NotImplementedError
+
+
+class NormalizeAttributationProcessor(AttributationProcessor):
+    """
+    Based on Captum image attributation visualization technique.
+    """
+
+    def __init__(
+        self,
+        obs_space: gym.Space,
+        obs_is_image: bool = False,
+        sign: AttributationVisualizationSign = AttributationVisualizationSign.ALL,
+        outlier_percentile: Union[int, float] = 5,
+    ):
+        self.obs_space = obs_space
+        self.obs_is_image = obs_is_image
+        self.sign = sign
+        self.outlier_percentile = outlier_percentile
+
+    def _transform(self, attr: AttributationLike) -> AttributationLike:
+        obs_space = self.obs_space
+        if self.obs_is_image:
+            attr = np.sum(attr, axis=2)
+            obs_space = remove_channel_dim_from_image_space(obs_space)
+        attr = flatten(self.obs_space, attr)
+        if self.sign == AttributationVisualizationSign.ALL:
+            scaling_factor = self._calculate_safe_scaling_factor(np.abs(attr))
+        elif self.sign == AttributationVisualizationSign.POSITIVE:
+            attr = (attr > 0) * attr
+            scaling_factor = self._calculate_safe_scaling_factor(attr)
+        elif self.sign == AttributationVisualizationSign.NEGATIVE:
+            attr = (attr < 0) * attr
+            scaling_factor = -self._calculate_safe_scaling_factor(np.abs(attr))
+        elif self.sign == AttributationVisualizationSign.ABSOLUTE_VALUE:
+            attr = np.abs(attr)
+            scaling_factor = self._calculate_safe_scaling_factor(attr)
+        else:
+            raise EnumValueNotFound(self.sign, AttributationVisualizationSign)
+        attr_norm = self._normalize(attr, scaling_factor)
+        return unflatten(obs_space, attr_norm)
+
+    def _calculate_safe_scaling_factor(self, attr: AttributationLike) -> float:
+        sorted_vals = np.sort(attr.flatten())
+        cum_sums = np.cumsum(sorted_vals)
+        threshold_id = np.where(
+            cum_sums >= cum_sums[-1] * 0.01 * self.outlier_percentile
+        )[0][0]
+        return sorted_vals[threshold_id]
+
+    def _normalize(
+        self, attr: AttributationLike, scaling_factor: float
+    ) -> AttributationLike:
+        if abs(scaling_factor) < 1e-5:
+            return np.clip(attr, -1, 1)
+        attr_norm = attr / scaling_factor
+        return np.clip(attr_norm, -1, 1)
 
 
 class AttributationTarget(IntEnum):
@@ -130,7 +203,9 @@ class AttributationTrajectoryIterator(abc.Iterator):
 
 
 def attribute_trajectory(
-    trajectory_it: AttributationTrajectoryIterator, model: Model,
+    trajectory_it: AttributationTrajectoryIterator,
+    model: Model,
+    processor: Optional[AttributationProcessor] = None,
 ) -> Trajectory:
     algo = IntegratedGradients(model)
     timesteps = []
@@ -166,6 +241,9 @@ def attribute_trajectory(
             )
         else:
             raise ActionSpaceNotSupported(model.action_space())
+
+        if processor is not None:
+            attributation = processor.transform(attributation)
 
         timesteps.append(replace(batch.timestep, attributations=attributation))
 

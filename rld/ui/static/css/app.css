@@ -36,6 +36,23 @@ canvas {
     text-align: right;
 }
 
+.image-container {
+
+}
+
+.image-container img {
+    display: block;
+    float: left;
+}
+
+.image-container .obs-image {
+
+}
+
+.image-container .attr-image {
+
+}
+
 .navigation {
     width: 800px;
 }
