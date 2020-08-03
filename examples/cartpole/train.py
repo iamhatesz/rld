@@ -6,8 +6,9 @@ if __name__ == "__main__":
 
     run(
         "PPO",
-        local_dir="/tmp/cartpole",
+        name="rld-cartpole",
+        local_dir="/tmp/ray",
         checkpoint_at_end=True,
-        stop={"episode_reward_mean": 200.0},
+        stop={"episode_reward_mean": 450.0},
         config={"env": "CartPole-v1", "framework": "torch",},
     )

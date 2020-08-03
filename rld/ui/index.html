@@ -56,8 +56,8 @@
         import { CartPoleViewer, ImageViewer } from "/static/js/viewer.js";
         import { App } from "/static/js/app.js";
 
-        // const viewer = new CartPoleViewer(800, 500);
-        const viewer = new ImageViewer(250, 250, 84, 84);
+        const viewer = new CartPoleViewer(800, 500);
+        // const viewer = new ImageViewer(250, 250, 84, 84);
         const app = new App("http://127.0.0.1:5000", viewer, false)
         app.run();
     </script>
