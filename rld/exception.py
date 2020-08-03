@@ -22,7 +22,7 @@ class InvalidConfigProvided(Exception):
     def __init__(self, config_path: Path):
         super().__init__(
             f"The provided config file (`{config_path}`) does not contain "
-            f"a `config` variable."
+            f"a valid `config` variable."
         )
 
 

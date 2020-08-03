@@ -135,7 +135,10 @@ def load_config(config_path: Path) -> Config:
     config_spec.loader.exec_module(config_mod)
     if not hasattr(config_mod, "config"):
         raise InvalidConfigProvided(config_path)
-    return config_mod.config
+    config = config_mod.config
+    if not isinstance(config, Config):
+        raise InvalidConfigProvided(config_path)
+    return config
 
 
 if __name__ == "__main__":
