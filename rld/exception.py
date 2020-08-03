@@ -1,4 +1,5 @@
 from enum import Enum
+from pathlib import Path
 from typing import Any, Type
 
 import gym
@@ -15,6 +16,14 @@ class ActionSpaceNotSupported(Exception):
 class EnumValueNotFound(Exception):
     def __init__(self, value: Any, enum: Type[Enum]):
         super().__init__(f"The value `{value}` was not found in enum `{enum}`")
+
+
+class InvalidConfigProvided(Exception):
+    def __init__(self, config_path: Path):
+        super().__init__(
+            f"The provided config file (`{config_path}`) does not contain "
+            f"a `config` variable."
+        )
 
 
 class APIException(Exception):
