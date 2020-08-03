@@ -12,7 +12,7 @@ function attributationColor(value, max) {
     const huePositive = 0.3;
     const hueNegative = 1.0;
 
-    const lightness = (lightnessAtMin + (1.0 - (Math.abs(value) / max).clamp(0, 1)) * (lightnessAtMax - lightnessAtMin));
+    const lightness = (lightnessAtMin + (1.0 - Math.abs(value)) * (lightnessAtMax - lightnessAtMin));
     const hue = value > 0 ? huePositive : hueNegative;
 
     return [hue, saturation, lightness];
@@ -175,6 +175,7 @@ class WebGLViewer extends Viewer {
 }
 
 class CartPoleViewer extends WebGLViewer {
+    // TODO Make these values compliant with the original CartPole dimensions
     static CART_LENGTH = 3;
     static CART_WIDTH = 1;
     static CART_HEIGHT = 1;
@@ -231,10 +232,11 @@ class CartPoleViewer extends WebGLViewer {
 
         if (timestep["attributations"] !== null) {
             const attr = timestep["attributations"]["data"];
-            const cartTotal = attr[0] + attr[1];
-            const poleTotal = attr[2] + attr[3];
+            const cartTotal = (attr[0] + attr[1]).clamp(-1, 1);
+            const poleTotal = (attr[2] + attr[3]).clamp(-1, 1);
             const [cartH, cartS, cartL] = attributationColor(cartTotal, 1);
             const [poleH, poleS, poleL] = attributationColor(poleTotal, 1);
+            console.log(cartTotal, poleTotal);
             this.cart.material.color.setHSL(cartH, cartS, cartL);
             this.pole.children[0].material.color.setHSL(poleH, poleS, poleL);
         }
