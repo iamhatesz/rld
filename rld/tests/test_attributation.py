@@ -9,7 +9,6 @@ from rld.attributation import (
     AttributationTarget,
     attribute_trajectory,
 )
-from rld.rollout import FromMemoryRolloutReader
 from rld.tests.resources.envs import ALL_ENVS, collect_rollout
 from rld.wrappers import RayModelWrapper
 
@@ -34,7 +33,7 @@ class TestAttributation(unittest.TestCase):
                     model = RayModelWrapper(trainer.get_policy().model)
                     obs_space = model.original_obs_space()
 
-                    rollout = FromMemoryRolloutReader(collect_rollout(env_fn()))
+                    rollout = collect_rollout(env_fn())
 
                     for trajectory in rollout:
                         trajectory_it = AttributationTrajectoryIterator(

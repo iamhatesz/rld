@@ -125,63 +125,34 @@ class Trajectory(abc.Iterable, abc.Sized):
         )
 
     def __iter__(self) -> Iterator[Timestep]:
-        return TrajectoryIterator(self)
+        return iter(self.timesteps)
 
     def __len__(self) -> int:
         return len(self.timesteps)
-
-
-class TrajectoryIterator(abc.Iterator):
-    def __init__(self, trajectory: Trajectory):
-        self.trajectory = trajectory
-        self.n = 0
-
-    def __next__(self) -> Timestep:
-        try:
-            timestep = self.trajectory[self.n]
-            self.n += 1
-            return timestep
-        except IndexError:
-            raise StopIteration
 
 
 @dataclass
 class Rollout:
     trajectories: Sequence[Trajectory]
 
+    def __iter__(self) -> Iterator[Trajectory]:
+        return iter(self.trajectories)
+
     def __len__(self) -> int:
         return len(self.trajectories)
 
 
 class RolloutReader:
-    def __iter__(self) -> RolloutIterator:
+    def __iter__(self) -> Iterator[Trajectory]:
         raise NotImplementedError
 
 
-class RolloutIterator:
-    def __next__(self) -> Trajectory:
-        raise NotImplementedError
-
-
-class FromMemoryRolloutReader(RolloutReader, RolloutIterator):
-    def __init__(self, rollout: Rollout):
-        self.rollout = rollout
-        self._it: Optional[Iterator[Trajectory]] = None
-
-    def __iter__(self) -> RolloutIterator:
-        self._it = iter(self.rollout.trajectories)
-        return self
-
-    def __next__(self) -> Trajectory:
-        return next(self._it)
-
-
-class FromFileRolloutReader(RolloutReader, RolloutIterator):
+class FileRolloutReader(RolloutReader, Iterator[Trajectory]):
     def __init__(self, rollout_path: Path):
         self.rollout_path = rollout_path
         self._it: Optional[Iterator[Trajectory]] = None
 
-    def __iter__(self) -> RolloutIterator:
+    def __iter__(self) -> Iterator[Trajectory]:
         with open(str(self.rollout_path), "rb") as rollout_file:
             self._it = iter(pickle.load(rollout_file).trajectories)
         return self
@@ -190,7 +161,7 @@ class FromFileRolloutReader(RolloutReader, RolloutIterator):
         return next(self._it)
 
 
-class RayRolloutReader(RolloutReader, RolloutIterator):
+class RayFileRolloutReader(RolloutReader, Iterator[Trajectory]):
     def __init__(self, rollout: Path):
         self.rollout = shelve.open(str(rollout))
         self.n = 0
@@ -233,7 +204,7 @@ class RolloutWriter:
         pass
 
 
-class ToFileRolloutWriter(RolloutWriter):
+class FileRolloutWriter(RolloutWriter):
     def __init__(self, rollout_path: Path):
         self.rollout_path = rollout_path
         self._rollout_file: Optional[BinaryIO] = None

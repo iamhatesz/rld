@@ -13,9 +13,9 @@ from rld.attributation import (
 from rld.config import Config
 from rld.exception import InvalidConfigProvided
 from rld.rollout import (
-    RayRolloutReader,
-    ToFileRolloutWriter,
-    FromFileRolloutReader,
+    RayFileRolloutReader,
+    FileRolloutWriter,
+    FileRolloutReader,
     Rollout,
 )
 
@@ -40,9 +40,9 @@ def convert(out: str, rollout: str):
 
     click.echo(f"Converting Ray rollout `{rollout}` to `{out}`...")
 
-    ray_rollout_reader = RayRolloutReader(rollout_path)
+    ray_rollout_reader = RayFileRolloutReader(rollout_path)
 
-    with ToFileRolloutWriter(out_path) as rollout_writer:
+    with FileRolloutWriter(out_path) as rollout_writer:
         for trajectory in ray_rollout_reader:
             rollout_writer.write(trajectory)
 
@@ -81,11 +81,11 @@ def attribute(
 
     click.echo("Attributing rollout...")
 
-    with ToFileRolloutWriter(out_path) as rollout_writer:
+    with FileRolloutWriter(out_path) as rollout_writer:
         if rllib:
-            reader = RayRolloutReader(rollout_path)
+            reader = RayFileRolloutReader(rollout_path)
         else:
-            reader = FromFileRolloutReader(rollout_path)
+            reader = FileRolloutReader(rollout_path)
 
         if normalize:
             sign = AttributationVisualizationSign[sign.upper()]
@@ -122,7 +122,7 @@ def start(rollout: str):
     if not rollout_path.exists():
         raise FileNotFoundError(f"Rollout file `{rollout}` not found.")
 
-    rollout_obj = FromFileRolloutReader(rollout_path)
+    rollout_obj = FileRolloutReader(rollout_path)
     # TODO Refactor this
     app = init(Rollout([t for t in rollout_obj]))
     # TODO Make this dependent on the debug flag value
