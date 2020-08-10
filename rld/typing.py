@@ -25,4 +25,4 @@ AttributationLike = Union[np.ndarray, Mapping[str, np.ndarray]]
 AttributationLikeStrict = torch.Tensor
 AttributationBatchLike = Sequence[AttributationLike]
 
-BaselineBuilder = Callable[[], np.ndarray]
+BaselineBuilder = Callable[[ObsLike], np.ndarray]

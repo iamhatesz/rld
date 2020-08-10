@@ -142,7 +142,7 @@ class AttributationTrajectoryIterator(abc.Iterator):
         inputs = self.model.flatten_obs(timestep.obs)
 
         if self.baseline is not None:
-            baselines = self.baseline()
+            baselines = self.baseline(inputs)
         else:
             baselines = np.zeros_like(inputs)
 
