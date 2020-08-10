@@ -4,7 +4,7 @@ import pickle
 import shelve
 from abc import ABC
 from collections import abc, OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator, Optional, Any, Sequence, Union, List, BinaryIO, Callable
 
@@ -22,7 +22,27 @@ from rld.typing import (
 
 
 @dataclass
+class Attributation:
+    picked: ActionAttributation
+    top: List[ActionAttributation] = field(default_factory=list)
+
+    def is_complied(self, obs_space: gym.Space) -> bool:
+        return self.picked.is_complied(obs_space) and all(
+            [t.is_complied(obs_space) for t in self.top]
+        )
+
+    def map(
+        self, fn: Callable[[AttributationLike], AttributationLike]
+    ) -> Attributation:
+        return Attributation(
+            picked=self.picked.map(fn), top=[t.map(fn) for t in self.top],
+        )
+
+
+@dataclass
 class ActionAttributation(ABC):
+    action: ActionLike
+    prob: float
     data: Union[AttributationLike, Sequence[AttributationLike]]
 
     def is_complied(self, obs_space: gym.Space) -> bool:
@@ -58,20 +78,23 @@ class MultiDiscreteActionAttributation(ActionAttributation):
     def is_complied(self, obs_space: gym.Space) -> bool:
         obs_space = remove_value_constraints_from_space(obs_space)
         return all(
-            [obs_space.contains(self.action(i)) for i in range(self.num_actions())]
+            [
+                obs_space.contains(self.sub_action(i))
+                for i in range(self.num_sub_actions())
+            ]
         )
 
     def map(
         self, fn: Callable[[AttributationLike], AttributationLike]
     ) -> ActionAttributation:
         return MultiDiscreteActionAttributation(
-            [fn(self.action(i)) for i in range(self.num_actions())]
+            [fn(self.sub_action(i)) for i in range(self.num_sub_actions())]
         )
 
-    def num_actions(self) -> int:
+    def num_sub_actions(self) -> int:
         return len(self.data)
 
-    def action(self, index: int) -> AttributationLike:
+    def sub_action(self, index: int) -> AttributationLike:
         return self.data[index]
 
 
@@ -106,7 +129,7 @@ class Timestep:
     reward: RewardLike
     done: DoneLike
     info: InfoLike
-    attributations: Optional[ActionAttributation] = None
+    attributations: Optional[Attributation] = None
 
 
 @dataclass

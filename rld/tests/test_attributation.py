@@ -40,7 +40,7 @@ class TestAttributation(unittest.TestCase):
                             trajectory,
                             model=model,
                             baseline=None,
-                            target=AttributationTarget.PICKED,
+                            target=AttributationTarget.TOP3,
                         )
 
                         attr_trajectory = attribute_trajectory(trajectory_it, model)
