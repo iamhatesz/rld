@@ -4,7 +4,7 @@ import pickle
 import shelve
 from abc import ABC
 from collections import abc, OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator, Optional, Any, Sequence, Union, List, BinaryIO, Callable
 
@@ -22,7 +22,27 @@ from rld.typing import (
 
 
 @dataclass
+class Attributation:
+    picked: ActionAttributation
+    top: List[ActionAttributation] = field(default_factory=list)
+
+    def is_complied(self, obs_space: gym.Space) -> bool:
+        return self.picked.is_complied(obs_space) and all(
+            [t.is_complied(obs_space) for t in self.top]
+        )
+
+    def map(
+        self, fn: Callable[[AttributationLike], AttributationLike]
+    ) -> Attributation:
+        return Attributation(
+            picked=self.picked.map(fn), top=[t.map(fn) for t in self.top],
+        )
+
+
+@dataclass
 class ActionAttributation(ABC):
+    action: ActionLike
+    prob: float
     data: Union[AttributationLike, Sequence[AttributationLike]]
 
     def is_complied(self, obs_space: gym.Space) -> bool:
@@ -58,20 +78,23 @@ class MultiDiscreteActionAttributation(ActionAttributation):
     def is_complied(self, obs_space: gym.Space) -> bool:
         obs_space = remove_value_constraints_from_space(obs_space)
         return all(
-            [obs_space.contains(self.action(i)) for i in range(self.num_actions())]
+            [
+                obs_space.contains(self.sub_action(i))
+                for i in range(self.num_sub_actions())
+            ]
         )
 
     def map(
         self, fn: Callable[[AttributationLike], AttributationLike]
     ) -> ActionAttributation:
         return MultiDiscreteActionAttributation(
-            [fn(self.action(i)) for i in range(self.num_actions())]
+            [fn(self.sub_action(i)) for i in range(self.num_sub_actions())]
         )
 
-    def num_actions(self) -> int:
+    def num_sub_actions(self) -> int:
         return len(self.data)
 
-    def action(self, index: int) -> AttributationLike:
+    def sub_action(self, index: int) -> AttributationLike:
         return self.data[index]
 
 
@@ -106,7 +129,7 @@ class Timestep:
     reward: RewardLike
     done: DoneLike
     info: InfoLike
-    attributations: Optional[ActionAttributation] = None
+    attributations: Optional[Attributation] = None
 
 
 @dataclass
@@ -125,63 +148,34 @@ class Trajectory(abc.Iterable, abc.Sized):
         )
 
     def __iter__(self) -> Iterator[Timestep]:
-        return TrajectoryIterator(self)
+        return iter(self.timesteps)
 
     def __len__(self) -> int:
         return len(self.timesteps)
-
-
-class TrajectoryIterator(abc.Iterator):
-    def __init__(self, trajectory: Trajectory):
-        self.trajectory = trajectory
-        self.n = 0
-
-    def __next__(self) -> Timestep:
-        try:
-            timestep = self.trajectory[self.n]
-            self.n += 1
-            return timestep
-        except IndexError:
-            raise StopIteration
 
 
 @dataclass
 class Rollout:
     trajectories: Sequence[Trajectory]
 
+    def __iter__(self) -> Iterator[Trajectory]:
+        return iter(self.trajectories)
+
     def __len__(self) -> int:
         return len(self.trajectories)
 
 
 class RolloutReader:
-    def __iter__(self) -> RolloutIterator:
+    def __iter__(self) -> Iterator[Trajectory]:
         raise NotImplementedError
 
 
-class RolloutIterator:
-    def __next__(self) -> Trajectory:
-        raise NotImplementedError
-
-
-class FromMemoryRolloutReader(RolloutReader, RolloutIterator):
-    def __init__(self, rollout: Rollout):
-        self.rollout = rollout
-        self._it: Optional[Iterator[Trajectory]] = None
-
-    def __iter__(self) -> RolloutIterator:
-        self._it = iter(self.rollout.trajectories)
-        return self
-
-    def __next__(self) -> Trajectory:
-        return next(self._it)
-
-
-class FromFileRolloutReader(RolloutReader, RolloutIterator):
+class FileRolloutReader(RolloutReader, Iterator[Trajectory]):
     def __init__(self, rollout_path: Path):
         self.rollout_path = rollout_path
         self._it: Optional[Iterator[Trajectory]] = None
 
-    def __iter__(self) -> RolloutIterator:
+    def __iter__(self) -> Iterator[Trajectory]:
         with open(str(self.rollout_path), "rb") as rollout_file:
             self._it = iter(pickle.load(rollout_file).trajectories)
         return self
@@ -190,7 +184,7 @@ class FromFileRolloutReader(RolloutReader, RolloutIterator):
         return next(self._it)
 
 
-class RayRolloutReader(RolloutReader, RolloutIterator):
+class RayFileRolloutReader(RolloutReader, Iterator[Trajectory]):
     def __init__(self, rollout: Path):
         self.rollout = shelve.open(str(rollout))
         self.n = 0
@@ -233,7 +227,7 @@ class RolloutWriter:
         pass
 
 
-class ToFileRolloutWriter(RolloutWriter):
+class FileRolloutWriter(RolloutWriter):
     def __init__(self, rollout_path: Path):
         self.rollout_path = rollout_path
         self._rollout_file: Optional[BinaryIO] = None

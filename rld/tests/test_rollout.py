@@ -9,10 +9,9 @@ from ray.rllib.agents.ppo import PPOTrainer
 from ray.rllib.rollout import rollout, RolloutSaver
 
 from rld.rollout import (
-    RayRolloutReader,
-    FromMemoryRolloutReader,
-    ToFileRolloutWriter,
-    FromFileRolloutReader,
+    RayFileRolloutReader,
+    FileRolloutWriter,
+    FileRolloutReader,
 )
 from rld.tests.resources.envs import collect_rollout, ALL_ENVS
 
@@ -32,7 +31,7 @@ class TestRolloutReader(unittest.TestCase):
     def test_memory_rollouter_reader(self):
         for env_fn in ALL_ENVS:
             with self.subTest(env=env_fn):
-                rollout = FromMemoryRolloutReader(collect_rollout(env_fn()))
+                rollout = collect_rollout(env_fn())
                 for trajectory in rollout:
                     self.assertIsInstance(trajectory.timesteps, list)
 
@@ -42,11 +41,11 @@ class TestRolloutReader(unittest.TestCase):
             with tempfile.TemporaryDirectory() as temp_dir:
                 rollout_file = Path(temp_dir) / "rollout"
 
-                with ToFileRolloutWriter(rollout_file) as writer:
+                with FileRolloutWriter(rollout_file) as writer:
                     for trajectory in rollout.trajectories:
                         writer.write(trajectory)
 
-                reader = FromFileRolloutReader(rollout_file)
+                reader = FileRolloutReader(rollout_file)
                 for trajectory_l, trajectory_r in zip(rollout.trajectories, reader):
                     for ts_l, ts_r in zip(trajectory_l, trajectory_r):
                         np.testing.assert_equal(ts_l.obs, ts_r.obs)
@@ -62,7 +61,14 @@ class TestRolloutReader(unittest.TestCase):
         for trainer_fn in ALL_TRAINERS:
             for env_fn in ALL_ENVS:
                 with self.subTest(trainer=trainer_fn, env=env_fn):
-                    trainer = trainer_fn(config={"env": env_fn, "framework": "torch",})
+                    trainer = trainer_fn(
+                        config={
+                            "env": env_fn,
+                            "framework": "torch",
+                            "train_batch_size": 128,
+                            "rollout_fragment_length": 128,
+                        }
+                    )
                     with tempfile.TemporaryDirectory() as temp_dir:
                         rollout_file = Path(temp_dir) / "rollout"
                         rollout(
@@ -72,6 +78,6 @@ class TestRolloutReader(unittest.TestCase):
                             num_episodes=10,
                             saver=RolloutSaver(outfile=str(rollout_file)),
                         )
-                        rollout_reader = RayRolloutReader(rollout_file)
+                        rollout_reader = RayFileRolloutReader(rollout_file)
                         for trajectory in rollout_reader:
                             self.assertIsInstance(trajectory.timesteps, list)

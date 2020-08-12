@@ -1,12 +1,21 @@
 import random
+from abc import ABC
 from typing import Optional
 
 import gym
 
 from rld.rollout import Trajectory, Timestep, Rollout
+from rld.tests.resources.spaces import (
+    BOX_OBS_SPACE,
+    IMAGE_OBS_SPACE,
+    DICT_OBS_SPACE,
+    DISCRETE_ACTION_SPACE,
+    MULTI_DISCRETE_ACTION_SPACE,
+    TUPLE_ACTION_SPACE,
+)
 
 
-class BaseEnv(gym.Env):
+class BaseEnv(gym.Env, ABC):
     def __init__(self, env_config: Optional[dict] = None):
         super().__init__()
         self.env_config = env_config
@@ -24,66 +33,60 @@ class BaseEnv(gym.Env):
 
 
 class BoxObsDiscreteActionEnv(BaseEnv):
-    observation_space = gym.spaces.Box(-1, 1, shape=(6,))
-    action_space = gym.spaces.Discrete(4)
+    observation_space = BOX_OBS_SPACE
+    action_space = DISCRETE_ACTION_SPACE
 
 
 class BoxObsMultiDiscreteActionEnv(BaseEnv):
-    observation_space = gym.spaces.Box(-1, 1, shape=(6,))
-    action_space = gym.spaces.MultiDiscrete([4, 2])
+    observation_space = BOX_OBS_SPACE
+    action_space = MULTI_DISCRETE_ACTION_SPACE
 
 
 class BoxObsTupleActionEnv(BaseEnv):
-    observation_space = gym.spaces.Box(-1, 1, shape=(6,))
-    action_space = gym.spaces.Tuple((gym.spaces.Discrete(2), gym.spaces.Discrete(2)))
+    observation_space = BOX_OBS_SPACE
+    action_space = TUPLE_ACTION_SPACE
 
 
 class ImageObsDiscreteActionEnv(BaseEnv):
-    observation_space = gym.spaces.Box(0, 1, shape=(84, 84, 4))
-    action_space = gym.spaces.Discrete(4)
+    observation_space = IMAGE_OBS_SPACE
+    action_space = DISCRETE_ACTION_SPACE
 
 
 class ImageObsMultiDiscreteActionEnv(BaseEnv):
-    observation_space = gym.spaces.Box(0, 1, shape=(84, 84, 4))
-    action_space = gym.spaces.MultiDiscrete([4, 2])
+    observation_space = IMAGE_OBS_SPACE
+    action_space = MULTI_DISCRETE_ACTION_SPACE
 
 
 class ImageObsTupleActionEnv(BaseEnv):
-    observation_space = gym.spaces.Box(0, 1, shape=(84, 84, 4))
-    action_space = gym.spaces.Tuple((gym.spaces.Discrete(2), gym.spaces.Discrete(2)))
+    observation_space = IMAGE_OBS_SPACE
+    action_space = TUPLE_ACTION_SPACE
 
 
 class DictObsDiscreteActionEnv(BaseEnv):
-    observation_space = gym.spaces.Dict(
-        a=gym.spaces.Box(-1, 1, (4, 6)), b=gym.spaces.Box(-1, 1, (2,))
-    )
-    action_space = gym.spaces.Discrete(4)
+    observation_space = DICT_OBS_SPACE
+    action_space = DISCRETE_ACTION_SPACE
 
 
 class DictObsMultiDiscreteActionEnv(BaseEnv):
-    observation_space = gym.spaces.Dict(
-        a=gym.spaces.Box(-1, 1, (4, 6)), b=gym.spaces.Box(-1, 1, (2,))
-    )
-    action_space = gym.spaces.MultiDiscrete([4, 2])
+    observation_space = DICT_OBS_SPACE
+    action_space = MULTI_DISCRETE_ACTION_SPACE
 
 
 class DictObsTupleActionEnv(BaseEnv):
-    observation_space = gym.spaces.Dict(
-        a=gym.spaces.Box(-1, 1, (4, 6)), b=gym.spaces.Box(-1, 1, (2,))
-    )
-    action_space = gym.spaces.Tuple((gym.spaces.Discrete(2), gym.spaces.Discrete(2)))
+    observation_space = DICT_OBS_SPACE
+    action_space = TUPLE_ACTION_SPACE
 
 
 ALL_ENVS = [
     BoxObsDiscreteActionEnv,
     BoxObsMultiDiscreteActionEnv,
-    BoxObsTupleActionEnv,
+    # BoxObsTupleActionEnv,
     ImageObsDiscreteActionEnv,
     ImageObsMultiDiscreteActionEnv,
-    ImageObsTupleActionEnv,
+    # ImageObsTupleActionEnv,
     DictObsDiscreteActionEnv,
     DictObsMultiDiscreteActionEnv,
-    DictObsTupleActionEnv,
+    # DictObsTupleActionEnv,
 ]
 
 

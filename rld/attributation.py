@@ -1,9 +1,11 @@
+import operator
 import sys
 from collections import abc
 from dataclasses import dataclass, replace
 from enum import IntEnum
-from functools import partial
-from typing import Optional, Union
+from functools import reduce
+from itertools import accumulate, product
+from typing import Optional, Union, List, Tuple
 
 import gym
 import numpy as np
@@ -20,11 +22,10 @@ from rld.rollout import (
     Timestep,
     DiscreteActionAttributation,
     MultiDiscreteActionAttributation,
-    TupleActionAttributation,
-    ActionAttributation,
     remove_channel_dim_from_image_space,
+    Attributation,
 )
-from rld.typing import BaselineBuilder, ObsLike, AttributationLike
+from rld.typing import BaselineBuilder, ObsLike, AttributationLike, ActionLike
 
 
 class AttributationVisualizationSign(IntEnum):
@@ -35,7 +36,7 @@ class AttributationVisualizationSign(IntEnum):
 
 
 class AttributationProcessor:
-    def transform(self, attr: ActionAttributation) -> ActionAttributation:
+    def transform(self, attr: Attributation) -> Attributation:
         return attr.map(self._transform)
 
     def _transform(self, attr: AttributationLike) -> AttributationLike:
@@ -115,7 +116,10 @@ class AttributationTarget(IntEnum):
 class TimestepAttributationBatch:
     inputs: torch.Tensor
     baselines: torch.Tensor
-    target: torch.Tensor
+    targets: torch.Tensor
+    actions: List[ActionLike]
+    action_probs: List[float]
+    probs: torch.Tensor
     timestep: Timestep
 
 
@@ -133,6 +137,7 @@ class AttributationTrajectoryIterator(abc.Iterator):
         self.target = target
         self._it = iter(self.trajectory)
 
+    @torch.no_grad()
     def __next__(self) -> TimestepAttributationBatch:
         try:
             timestep = next(self._it)
@@ -142,60 +147,115 @@ class AttributationTrajectoryIterator(abc.Iterator):
         inputs = self.model.flatten_obs(timestep.obs)
 
         if self.baseline is not None:
-            baselines = self.baseline()
+            baselines = self.baseline(inputs)
         else:
             baselines = np.zeros_like(inputs)
-
-        if self.target == AttributationTarget.PICKED:
-            target = timestep.action
-        else:
-            raise NotImplementedError
 
         inputs = torch.tensor(inputs, device=self.model.input_device()).unsqueeze(dim=0)
         baselines = torch.tensor(
             baselines, device=self.model.output_device()
         ).unsqueeze(dim=0)
-        target = torch.tensor(target, device=self.model.output_device())
+
+        logits = self.model(inputs).squeeze(dim=0).cpu()
+        probs = torch.softmax(logits, dim=-1)
+
+        targets = []
+
+        picked_action = timestep.action
+        raw_picked_action = _action_to_raw_action(
+            self.model.action_space(), timestep.action
+        )
 
         if isinstance(self.model.action_space(), gym.spaces.Discrete):
-            # Discrete action space requires no modification to input signals
-            pass
-        elif isinstance(
-            self.model.action_space(), (gym.spaces.MultiDiscrete, gym.spaces.Tuple)
-        ):
-            if isinstance(self.model.action_space(), gym.spaces.MultiDiscrete):
-                # With MultiDiscrete action space we use batch dim to calculate
-                # attributations for each action in this space
-                subs = self.model.action_space().nvec
-            else:
-                # With Tuple action space we use batch dim to calculate attributations
-                # for each subspace in the action space. The overall mechanism is very
-                # similar to MultiDiscrete case, but each subspace might potentially be
-                # a different space.
-                subs = [space.n for space in self.model.action_space().spaces]
-
-            num_subs = len(subs)
-
-            # We are repeating the batch dim by the number of subs (actions or spaces)
-            inputs = _extend_batch_dim(inputs, num_subs)
-            baselines = _extend_batch_dim(baselines, num_subs)
-
-            # The action is stored in a rollout as a vector of either (a1, a2, ...) or
-            # (s1, s2, ...). However, in the model output, it is concatenated and
-            # flattened to a single dimension. To compensate for that, we add an offset
-            # from the beginning of the flattened vector to each action.
-            # Example:
-            # action_space = MultiDiscrete([4, 2])
-            # rollout_action = np.array([1, 0])
-            # model_action = [1, 0] + [0, 4] = [1, 4]
-            offset = torch.tensor(subs).roll(1).to(device=self.model.output_device())
-            offset[0] = 0
-            target = target + offset
+            prob_of_picked_action = probs[picked_action].item()
+        elif isinstance(self.model.action_space(), gym.spaces.MultiDiscrete):
+            prob_of_picked_action = (
+                torch.stack([probs[s] for s in raw_picked_action]).prod().item()
+            )
         else:
             raise ActionSpaceNotSupported(self.model.action_space())
 
+        # Always add the picked action to the targets list
+        targets.append((picked_action, raw_picked_action, prob_of_picked_action))
+
+        # Calculate additional targets list
+        if self.target in (
+            AttributationTarget.TOP3,
+            AttributationTarget.TOP5,
+            AttributationTarget.ALL,
+        ):
+            if isinstance(self.model.action_space(), gym.spaces.Discrete):
+                # Get total available actions
+                num_actions = logits.numel()
+                num_top = min(int(self.target.value), num_actions)
+                top_probs_with_index = probs.topk(k=num_top, dim=-1)
+                for index, prob in zip(
+                    top_probs_with_index.indices, top_probs_with_index.values
+                ):
+                    action = index.item()
+                    raw_action = _action_to_raw_action(
+                        self.model.action_space(), action
+                    )
+                    prob = prob.item()
+                    targets.append((action, raw_action, prob))
+            elif isinstance(self.model.action_space(), gym.spaces.MultiDiscrete):
+                # Extract probs for each sub-action
+                subs_probs = _extract_multi_discrete_action_probs(
+                    self.model.action_space(), probs
+                )
+                # Calculate most probably actions
+                top_probs_with_index = _sort_multi_discrete_action_probs(subs_probs)
+
+                num_actions = _total_multi_discrete_actions(self.model.action_space())
+                num_top = min(int(self.target.value), num_actions)
+                for action, prob in top_probs_with_index[:num_top]:
+                    raw_action = _action_to_raw_action(
+                        self.model.action_space(), action
+                    )
+                    targets.append((action, raw_action, prob))
+            else:
+                raise ActionSpaceNotSupported(self.model.action_space())
+
+        inputs_all = []
+        baselines_all = []
+        targets_all = []
+
+        for _, target, _ in targets:
+            if isinstance(self.model.action_space(), gym.spaces.Discrete):
+                inputs_for_target = inputs
+                baselines_for_target = baselines
+                targets_for_target = torch.tensor(
+                    target, device=self.model.output_device(), dtype=torch.long
+                ).unsqueeze(dim=0)
+            elif isinstance(self.model.action_space(), gym.spaces.MultiDiscrete):
+                num_sub_actions = _multi_discrete_actions_count(
+                    self.model.action_space()
+                )
+                inputs_for_target = _extend_batch_dim(inputs, num_sub_actions)
+                baselines_for_target = _extend_batch_dim(baselines, num_sub_actions)
+                targets_for_target = torch.tensor(
+                    target, device=self.model.output_device(), dtype=torch.long
+                )
+            else:
+                raise ActionSpaceNotSupported(self.model.action_space())
+            inputs_all.append(inputs_for_target)
+            baselines_all.append(baselines_for_target)
+            targets_all.append(targets_for_target)
+
+        inputs_batch = torch.cat(inputs_all, dim=0)
+        baselines_batch = torch.cat(baselines_all, dim=0)
+        targets_batch = torch.cat(targets_all, dim=0)
+        actions = [action for action, _, _ in targets]
+        action_probs = [prob for _, _, prob in targets]
+
         return TimestepAttributationBatch(
-            inputs=inputs, baselines=baselines, target=target, timestep=timestep,
+            inputs=inputs_batch,
+            baselines=baselines_batch,
+            targets=targets_batch,
+            actions=actions,
+            action_probs=action_probs,
+            probs=probs,
+            timestep=timestep,
         )
 
 
@@ -211,33 +271,60 @@ def attribute_trajectory(
     timesteps = []
     for batch in trajectory_it:
         raw_attributation = algo.attribute(
-            batch.inputs, baselines=batch.baselines, target=batch.target
+            batch.inputs, baselines=batch.baselines, target=batch.targets
         )
 
         if isinstance(model.action_space(), gym.spaces.Discrete):
-            attributation = DiscreteActionAttributation(
-                _convert_to_original_dimensions(model.obs_space(), raw_attributation)
-            )
-        elif isinstance(
-            model.action_space(), (gym.spaces.MultiDiscrete, gym.spaces.Tuple)
-        ):
-            if isinstance(model.action_space(), gym.spaces.MultiDiscrete):
-                # Using partial shouldn't be needed here obviously, but PyCharm
-                # unexpectedly complains that cls is not callable at the instantiation
-                # line...
-                cls = partial(MultiDiscreteActionAttributation)
-            else:
-                cls = partial(TupleActionAttributation)
-            attributation = cls(
-                [
-                    _convert_to_original_dimensions(
-                        # Create a dummy batch dim, which is lost with this type of
-                        # for-loop iteration
-                        model.obs_space(),
-                        action_attributation.unsqueeze(0),
+            attributation = Attributation(
+                picked=DiscreteActionAttributation(
+                    action=batch.actions[0],
+                    prob=batch.action_probs[0],
+                    data=model.unflatten_obs(raw_attributation[0].numpy()),
+                ),
+                top=[
+                    DiscreteActionAttributation(
+                        action=batch.actions[i],
+                        prob=batch.action_probs[i],
+                        data=model.unflatten_obs(raw_attributation[i].numpy()),
                     )
-                    for action_attributation in raw_attributation
-                ]
+                    for i in range(1, len(batch.actions))
+                ],
+            )
+        elif isinstance(model.action_space(), gym.spaces.MultiDiscrete):
+            num_sub_actions = _multi_discrete_actions_count(model.action_space())
+            grouped_attributation = [
+                raw_attributation[i : i + num_sub_actions]
+                for i in range(0, raw_attributation.size(0), num_sub_actions)
+            ]
+
+            attributation = Attributation(
+                picked=MultiDiscreteActionAttributation(
+                    action=batch.actions[0],
+                    prob=batch.action_probs[0],
+                    data=[
+                        model.unflatten_obs(grouped_attributation[0][j].numpy())
+                        # _convert_to_original_dimensions(
+                        #     model.obs_space(),
+                        #     grouped_attributation[0][j].unsqueeze(dim=0),
+                        # )
+                        for j in range(num_sub_actions)
+                    ],
+                ),
+                top=[
+                    MultiDiscreteActionAttributation(
+                        action=batch.actions[i],
+                        prob=batch.action_probs[i],
+                        data=[
+                            model.unflatten_obs(grouped_attributation[i][j].numpy())
+                            # _convert_to_original_dimensions(
+                            #     model.obs_space(),
+                            #     grouped_attributation[i][j].unsqueeze(dim=0),
+                            # )
+                            for j in range(num_sub_actions)
+                        ],
+                    )
+                    for i in range(1, len(batch.actions))
+                ],
             )
         else:
             raise ActionSpaceNotSupported(model.action_space())
@@ -260,19 +347,44 @@ def _extend_batch_dim(t: torch.Tensor, new_batch_dim: int) -> torch.Tensor:
     return t.repeat(repeat_shape)
 
 
-def _convert_to_original_dimensions(
-    obs_space: gym.Space, data: torch.Tensor
-) -> ObsLike:
-    if hasattr(obs_space, "original_space"):
-        original_obs_space = obs_space.original_space
+def _multi_discrete_actions_count(action_space: gym.spaces.MultiDiscrete) -> int:
+    return len(action_space.nvec)
+
+
+def _total_multi_discrete_actions(action_space: gym.spaces.MultiDiscrete) -> int:
+    return reduce(operator.mul, action_space.nvec)
+
+
+def _extract_multi_discrete_action_probs(
+    action_space: gym.spaces.MultiDiscrete, probs: torch.Tensor
+) -> List[torch.Tensor]:
+    # Extract sizes of each dimension (e.g. [4, 2, 3])
+    subs = action_space.nvec
+    # Accumulate sizes to calculate offsets (e.g. [0, 4, 6, 9])
+    # TODO Use initial=0 when moved to Python 3.8
+    offsets = [0] + list(accumulate(subs, operator.add))[:-1]
+    return [probs[o : o + s] for o, s in zip(offsets, subs)]
+
+
+def _sort_multi_discrete_action_probs(
+    probs: List[torch.Tensor],
+) -> List[Tuple[ActionLike, float]]:
+    indices = [range(s.numel()) for s in probs]
+    indices_tuples = [np.array(i) for i in product(*indices)]
+    probs_tuples = [torch.stack(s, dim=0).prod().item() for s in product(*probs)]
+    tuples = sorted(zip(indices_tuples, probs_tuples), key=lambda t: t[1], reverse=True)
+    return list(tuples)
+
+
+def _action_to_raw_action(action_space: gym.Space, action: ActionLike) -> ActionLike:
+    if isinstance(action_space, gym.spaces.Discrete):
+        return action
+    elif isinstance(action_space, gym.spaces.MultiDiscrete):
+        # Extract sizes of each dimension (e.g. [4, 2, 3])
+        subs = action_space.nvec
+        # Accumulate sizes to calculate offsets (e.g. [0, 4, 6, 9])
+        # TODO Use initial=0 when moved to Python 3.8
+        offsets = [0] + list(accumulate(subs, operator.add))[:-1]
+        return action + np.array(offsets)
     else:
-        original_obs_space = obs_space
-    return unflatten(
-        original_obs_space,
-        flatten(
-            original_obs_space,
-            convert_to_non_torch_type(
-                restore_original_dimensions(data, obs_space, tensorlib="torch")
-            ),
-        ),
-    )
+        raise ActionSpaceNotSupported(action_space)
