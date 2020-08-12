@@ -347,24 +347,6 @@ def _extend_batch_dim(t: torch.Tensor, new_batch_dim: int) -> torch.Tensor:
     return t.repeat(repeat_shape)
 
 
-def _convert_to_original_dimensions(
-    obs_space: gym.Space, data: torch.Tensor
-) -> ObsLike:
-    if hasattr(obs_space, "original_space"):
-        original_obs_space = obs_space.original_space
-    else:
-        original_obs_space = obs_space
-    return unflatten(
-        original_obs_space,
-        flatten(
-            original_obs_space,
-            convert_to_non_torch_type(
-                restore_original_dimensions(data, obs_space, tensorlib="torch")
-            ),
-        ),
-    )
-
-
 def _multi_discrete_actions_count(action_space: gym.spaces.MultiDiscrete) -> int:
     return len(action_space.nvec)
 
