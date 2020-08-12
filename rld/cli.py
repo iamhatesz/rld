@@ -111,9 +111,9 @@ def attribute(
 
 
 @main.command()
-# @click.option("--debug", default=True)
+@click.option("--debug", default=True)
 @click.argument("rollout")
-def start(rollout: str):
+def start(debug: bool, rollout: str):
     """
     This script runs web server serving application to visualize calculated
     attributations.
@@ -124,9 +124,9 @@ def start(rollout: str):
 
     rollout_obj = FileRolloutReader(rollout_path)
     # TODO Refactor this
-    app = init(Rollout([t for t in rollout_obj]))
+    app = init(Rollout([t for t in rollout_obj]), debug=debug)
     # TODO Make this dependent on the debug flag value
-    app.run(debug=True)
+    app.run(debug=debug)
 
 
 def load_config(config_path: Path) -> Config:

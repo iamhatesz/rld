@@ -1,7 +1,6 @@
 import numpy as np
 from flask import Flask, render_template, jsonify
 from flask.json import JSONEncoder
-from flask_cors import CORS
 from werkzeug.exceptions import NotFound
 
 from rld.exception import TrajectoryNotFound, EndpointNotFound, APIException
@@ -15,10 +14,13 @@ class NumpyJSONEncoder(JSONEncoder):
         return super().default(o)
 
 
-def init(rollout: Rollout) -> Flask:
+def init(rollout: Rollout, debug: bool = False) -> Flask:
     app = Flask(__name__, template_folder="ui", static_folder="ui/static")
     app.json_encoder = NumpyJSONEncoder
-    CORS(app)
+    if debug:
+        from flask_cors import CORS
+
+        CORS(app)
 
     @app.route("/")
     def index():
