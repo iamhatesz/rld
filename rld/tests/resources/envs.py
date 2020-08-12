@@ -1,12 +1,21 @@
 import random
+from abc import ABC
 from typing import Optional
 
 import gym
 
 from rld.rollout import Trajectory, Timestep, Rollout
+from rld.tests.resources.spaces import (
+    BOX_OBS_SPACE,
+    IMAGE_OBS_SPACE,
+    DICT_OBS_SPACE,
+    DISCRETE_ACTION_SPACE,
+    MULTI_DISCRETE_ACTION_SPACE,
+    TUPLE_ACTION_SPACE,
+)
 
 
-class BaseEnv(gym.Env):
+class BaseEnv(gym.Env, ABC):
     def __init__(self, env_config: Optional[dict] = None):
         super().__init__()
         self.env_config = env_config
@@ -21,19 +30,6 @@ class BaseEnv(gym.Env):
 
     def render(self, mode="human"):
         pass
-
-
-BOX_OBS_SPACE = gym.spaces.Box(-1, 1, shape=(6,))
-IMAGE_OBS_SPACE = gym.spaces.Box(0, 1, shape=(84, 84, 4))
-DICT_OBS_SPACE = gym.spaces.Dict(
-    a=gym.spaces.Box(-1, 1, (4, 6)), b=gym.spaces.Box(-1, 1, (2,))
-)
-
-DISCRETE_ACTION_SPACE = gym.spaces.Discrete(4)
-MULTI_DISCRETE_ACTION_SPACE = gym.spaces.MultiDiscrete([4, 3, 2])
-TUPLE_ACTION_SPACE = gym.spaces.Tuple(
-    (gym.spaces.MultiDiscrete([4, 2, 3]), gym.spaces.Discrete(2))
-)
 
 
 class BoxObsDiscreteActionEnv(BaseEnv):

@@ -1,5 +1,6 @@
 import gym
 import torch
+from gym.spaces import flatten, unflatten
 from ray.rllib.models.modelv2 import ModelV2
 from ray.rllib.models.preprocessors import get_preprocessor
 
@@ -43,4 +44,11 @@ class RayModelWrapper(Model):
             return self.obs_space()
 
     def flatten_obs(self, obs: ObsLike) -> ObsLikeStrict:
-        return self.preprocessor.transform(obs)
+        if isinstance(self.original_obs_space(), gym.spaces.Box):
+            return obs
+        return flatten(self.original_obs_space(), obs)
+
+    def unflatten_obs(self, obs: ObsLikeStrict) -> ObsLike:
+        if isinstance(self.original_obs_space(), gym.spaces.Box):
+            return obs
+        return unflatten(self.original_obs_space(), obs)

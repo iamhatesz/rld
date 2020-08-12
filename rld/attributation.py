@@ -279,17 +279,13 @@ def attribute_trajectory(
                 picked=DiscreteActionAttributation(
                     action=batch.actions[0],
                     prob=batch.action_probs[0],
-                    data=_convert_to_original_dimensions(
-                        model.obs_space(), raw_attributation[0].unsqueeze(dim=0)
-                    ),
+                    data=model.unflatten_obs(raw_attributation[0].numpy()),
                 ),
                 top=[
                     DiscreteActionAttributation(
                         action=batch.actions[i],
                         prob=batch.action_probs[i],
-                        data=_convert_to_original_dimensions(
-                            model.obs_space(), raw_attributation[i].unsqueeze(dim=0)
-                        ),
+                        data=model.unflatten_obs(raw_attributation[i].numpy()),
                     )
                     for i in range(1, len(batch.actions))
                 ],
@@ -306,10 +302,11 @@ def attribute_trajectory(
                     action=batch.actions[0],
                     prob=batch.action_probs[0],
                     data=[
-                        _convert_to_original_dimensions(
-                            model.obs_space(),
-                            grouped_attributation[0][j].unsqueeze(dim=0),
-                        )
+                        model.unflatten_obs(grouped_attributation[0][j].numpy())
+                        # _convert_to_original_dimensions(
+                        #     model.obs_space(),
+                        #     grouped_attributation[0][j].unsqueeze(dim=0),
+                        # )
                         for j in range(num_sub_actions)
                     ],
                 ),
@@ -318,10 +315,11 @@ def attribute_trajectory(
                         action=batch.actions[i],
                         prob=batch.action_probs[i],
                         data=[
-                            _convert_to_original_dimensions(
-                                model.obs_space(),
-                                grouped_attributation[i][j].unsqueeze(dim=0),
-                            )
+                            model.unflatten_obs(grouped_attributation[i][j].numpy())
+                            # _convert_to_original_dimensions(
+                            #     model.obs_space(),
+                            #     grouped_attributation[i][j].unsqueeze(dim=0),
+                            # )
                             for j in range(num_sub_actions)
                         ],
                     )

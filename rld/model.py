@@ -1,8 +1,10 @@
 from abc import ABC
+from typing import Any
 
 import gym
 import torch
 import torch.nn as nn
+from gym.spaces import flatten, unflatten
 
 from rld.typing import ObsLike, ObsLikeStrict
 
@@ -21,4 +23,13 @@ class Model(ABC, nn.Module):
         raise NotImplementedError
 
     def flatten_obs(self, obs: ObsLike) -> ObsLikeStrict:
-        raise NotImplementedError
+        if isinstance(self.obs_space(), gym.spaces.Box):
+            return obs
+        return flatten(self.obs_space(), obs)
+
+    def unflatten_obs(self, obs: ObsLikeStrict) -> ObsLike:
+        return unflatten(self.obs_space(), obs)
+
+    # From PyTorch 1.6
+    def _forward_unimplemented(self, *input: Any) -> None:
+        pass
