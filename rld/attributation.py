@@ -12,8 +12,6 @@ import numpy as np
 import torch
 from captum.attr import IntegratedGradients
 from gym.spaces import flatten, unflatten
-from ray.rllib.models.modelv2 import restore_original_dimensions
-from ray.rllib.utils.torch_ops import convert_to_non_torch_type
 
 from rld.exception import ActionSpaceNotSupported, EnumValueNotFound
 from rld.model import Model
@@ -25,22 +23,17 @@ from rld.rollout import (
     remove_channel_dim_from_image_space,
     Attributation,
 )
-from rld.typing import BaselineBuilder, ObsLike, AttributationLike, ActionLike
+from rld.typing import BaselineBuilder, AttributationLike, ActionLike
 
 
-class AttributationVisualizationSign(IntEnum):
+class AttributationNormalizationMode(IntEnum):
     ALL = 0
     POSITIVE = 1
     NEGATIVE = 2
     ABSOLUTE_VALUE = 3
 
 
-class AttributationProcessor:
-    def transform(self, attr: AttributationLike) -> AttributationLike:
-        raise NotImplementedError
-
-
-class NormalizeAttributationProcessor(AttributationProcessor):
+class AttributationNormalizer:
     """
     Based on Captum image attributation visualization technique.
     """
@@ -48,35 +41,35 @@ class NormalizeAttributationProcessor(AttributationProcessor):
     def __init__(
         self,
         obs_space: gym.Space,
-        obs_is_image: bool = False,
-        sign: AttributationVisualizationSign = AttributationVisualizationSign.ALL,
-        outlier_percentile: Union[int, float] = 5,
+        obs_image_channel_dim: Optional[int],
+        sign: AttributationNormalizationMode,
+        outlier_percentile: Union[int, float],
     ):
         self.obs_space = obs_space
-        self.obs_is_image = obs_is_image
+        self.obs_image_channel_dim = obs_image_channel_dim
         self.sign = sign
         self.outlier_percentile = outlier_percentile
 
     def transform(self, attr: AttributationLike) -> AttributationLike:
         obs_space = self.obs_space
-        if self.obs_is_image:
-            attr = np.sum(attr, axis=2)
+        if self.obs_image_channel_dim is not None:
+            attr = np.sum(attr, axis=self.obs_image_channel_dim)
             obs_space = remove_channel_dim_from_image_space(obs_space)
         attr = flatten(self.obs_space, attr)
-        if self.sign == AttributationVisualizationSign.ALL:
+        if self.sign == AttributationNormalizationMode.ALL:
             scaling_factor = self._calculate_safe_scaling_factor(np.abs(attr))
-        elif self.sign == AttributationVisualizationSign.POSITIVE:
+        elif self.sign == AttributationNormalizationMode.POSITIVE:
             attr = (attr > 0) * attr
             scaling_factor = self._calculate_safe_scaling_factor(attr)
-        elif self.sign == AttributationVisualizationSign.NEGATIVE:
+        elif self.sign == AttributationNormalizationMode.NEGATIVE:
             attr = (attr < 0) * attr
             scaling_factor = -self._calculate_safe_scaling_factor(np.abs(attr))
-        elif self.sign == AttributationVisualizationSign.ABSOLUTE_VALUE:
+        elif self.sign == AttributationNormalizationMode.ABSOLUTE_VALUE:
             attr = np.abs(attr)
             scaling_factor = self._calculate_safe_scaling_factor(attr)
         else:
-            raise EnumValueNotFound(self.sign, AttributationVisualizationSign)
-        attr_norm = self._normalize(attr, scaling_factor)
+            raise EnumValueNotFound(self.sign, AttributationNormalizationMode)
+        attr_norm = self._scale(attr, scaling_factor)
         return unflatten(obs_space, attr_norm)
 
     def _calculate_safe_scaling_factor(self, attr: AttributationLike) -> float:
@@ -87,9 +80,8 @@ class NormalizeAttributationProcessor(AttributationProcessor):
         )[0][0]
         return sorted_vals[threshold_id]
 
-    def _normalize(
-        self, attr: AttributationLike, scaling_factor: float
-    ) -> AttributationLike:
+    @staticmethod
+    def _scale(attr: AttributationLike, scaling_factor: float) -> AttributationLike:
         if abs(scaling_factor) < 1e-5:
             return np.clip(attr, -1, 1)
         attr_norm = attr / scaling_factor
@@ -260,10 +252,11 @@ class AttributationTrajectoryIterator(abc.Iterator):
 
 
 def attribute_trajectory(
-    trajectory_it: AttributationTrajectoryIterator, model: Model,
+    trajectory_it: AttributationTrajectoryIterator,
+    model: Model,
+    normalizer: AttributationNormalizer,
 ) -> Trajectory:
     algo = IntegratedGradients(model)
-    normalizer = NormalizeAttributationProcessor(model.obs_space())
     timesteps = []
     for batch in trajectory_it:
         raw_attributation = algo.attribute(
