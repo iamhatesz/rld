@@ -6,6 +6,7 @@ from ray.rllib.agents.ppo import PPOTrainer
 from rld.attributation import AttributationTarget
 from rld.config import Config
 from rld.model import Model, RayModelWrapper
+from rld.typing import ObsLike
 
 
 def get_model() -> Model:
@@ -16,15 +17,13 @@ def get_model() -> Model:
     return model
 
 
-def build_baseline_builder(obs_space: gym.Space):
-    return lambda: np.zeros_like(obs_space.sample())
+def baseline_builder(obs: ObsLike):
+    return np.zeros_like(obs)
 
 
 model = get_model()
 
 
 config = Config(
-    model=model,
-    baseline=build_baseline_builder(model.obs_space()),
-    target=AttributationTarget.PICKED,
+    model=model, baseline=baseline_builder, target=AttributationTarget.PICKED,
 )
