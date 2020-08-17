@@ -8,7 +8,6 @@ from rld.attributation import (
     AttributationTrajectoryIterator,
     attribute_trajectory,
     AttributationNormalizer,
-    AttributationNormalizationMode,
 )
 from rld.config import Config
 from rld.exception import InvalidConfigProvided

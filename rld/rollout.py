@@ -15,7 +15,6 @@ from typing import (
     Union,
     List,
     BinaryIO,
-    Callable,
     Tuple,
 )
 

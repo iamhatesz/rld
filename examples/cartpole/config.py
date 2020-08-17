@@ -1,4 +1,3 @@
-import gym
 import numpy as np
 import ray
 from ray.rllib.agents.ppo import PPOTrainer
