@@ -10,10 +10,9 @@ from rld.attributation import (
     AttributationTarget,
     attribute_trajectory,
 )
-from rld.model import Model
+from rld.model import Model, RayModelWrapper
 from rld.tests.resources.envs import ALL_ENVS, collect_rollout
 from rld.tests.resources.models import ALL_MODELS
-from rld.wrappers import RayModelWrapper
 
 ALL_TRAINERS = [
     PGTrainer,

@@ -5,8 +5,7 @@ from ray.rllib.agents.ppo import PPOTrainer
 
 from rld.attributation import AttributationTarget
 from rld.config import Config
-from rld.model import Model
-from rld.wrappers import RayModelWrapper
+from rld.model import Model, RayModelWrapper
 
 
 def get_model() -> Model:
