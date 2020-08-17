@@ -23,11 +23,7 @@ ALL_TRAINERS = [
 
 class TestAttributation(unittest.TestCase):
     def _collect_rollout_and_validate_attributations(self, env: gym.Env, model: Model):
-        if isinstance(model, RayModelWrapper):
-            obs_space = model.original_obs_space()
-        else:
-            obs_space = model.obs_space()
-
+        obs_space = model.obs_space()
         rollout = collect_rollout(env, episodes=2, max_steps_per_episode=10)
 
         for trajectory in rollout:

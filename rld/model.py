@@ -28,6 +28,8 @@ class Model(ABC, nn.Module):
         return flatten(self.obs_space(), obs)
 
     def unflatten_obs(self, obs: ObsLikeStrict) -> ObsLike:
+        if isinstance(self.obs_space(), gym.spaces.Box):
+            return obs
         return unflatten(self.obs_space(), obs)
 
     # From PyTorch 1.6

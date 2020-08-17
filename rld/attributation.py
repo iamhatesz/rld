@@ -36,10 +36,7 @@ class AttributationVisualizationSign(IntEnum):
 
 
 class AttributationProcessor:
-    def transform(self, attr: Attributation) -> Attributation:
-        return attr.map(self._transform)
-
-    def _transform(self, attr: AttributationLike) -> AttributationLike:
+    def transform(self, attr: AttributationLike) -> AttributationLike:
         raise NotImplementedError
 
 
@@ -60,7 +57,7 @@ class NormalizeAttributationProcessor(AttributationProcessor):
         self.sign = sign
         self.outlier_percentile = outlier_percentile
 
-    def _transform(self, attr: AttributationLike) -> AttributationLike:
+    def transform(self, attr: AttributationLike) -> AttributationLike:
         obs_space = self.obs_space
         if self.obs_is_image:
             attr = np.sum(attr, axis=2)
@@ -263,11 +260,10 @@ class AttributationTrajectoryIterator(abc.Iterator):
 
 
 def attribute_trajectory(
-    trajectory_it: AttributationTrajectoryIterator,
-    model: Model,
-    processor: Optional[AttributationProcessor] = None,
+    trajectory_it: AttributationTrajectoryIterator, model: Model,
 ) -> Trajectory:
     algo = IntegratedGradients(model)
+    normalizer = NormalizeAttributationProcessor(model.obs_space())
     timesteps = []
     for batch in trajectory_it:
         raw_attributation = algo.attribute(
@@ -279,13 +275,19 @@ def attribute_trajectory(
                 picked=DiscreteActionAttributation(
                     action=batch.actions[0],
                     prob=batch.action_probs[0],
-                    data=model.unflatten_obs(raw_attributation[0].numpy()),
+                    raw=model.unflatten_obs(raw_attributation[0].numpy()),
+                    normalized=normalizer.transform(
+                        model.unflatten_obs(raw_attributation[0].numpy())
+                    ),
                 ),
                 top=[
                     DiscreteActionAttributation(
                         action=batch.actions[i],
                         prob=batch.action_probs[i],
-                        data=model.unflatten_obs(raw_attributation[i].numpy()),
+                        raw=model.unflatten_obs(raw_attributation[i].numpy()),
+                        normalized=normalizer.transform(
+                            model.unflatten_obs(raw_attributation[i].numpy())
+                        ),
                     )
                     for i in range(1, len(batch.actions))
                 ],
@@ -301,12 +303,14 @@ def attribute_trajectory(
                 picked=MultiDiscreteActionAttributation(
                     action=batch.actions[0],
                     prob=batch.action_probs[0],
-                    data=[
+                    raw=[
                         model.unflatten_obs(grouped_attributation[0][j].numpy())
-                        # _convert_to_original_dimensions(
-                        #     model.obs_space(),
-                        #     grouped_attributation[0][j].unsqueeze(dim=0),
-                        # )
+                        for j in range(num_sub_actions)
+                    ],
+                    normalized=[
+                        normalizer.transform(
+                            model.unflatten_obs(grouped_attributation[0][j].numpy())
+                        )
                         for j in range(num_sub_actions)
                     ],
                 ),
@@ -314,12 +318,14 @@ def attribute_trajectory(
                     MultiDiscreteActionAttributation(
                         action=batch.actions[i],
                         prob=batch.action_probs[i],
-                        data=[
+                        raw=[
                             model.unflatten_obs(grouped_attributation[i][j].numpy())
-                            # _convert_to_original_dimensions(
-                            #     model.obs_space(),
-                            #     grouped_attributation[i][j].unsqueeze(dim=0),
-                            # )
+                            for j in range(num_sub_actions)
+                        ],
+                        normalized=[
+                            normalizer.transform(
+                                model.unflatten_obs(grouped_attributation[i][j].numpy())
+                            )
                             for j in range(num_sub_actions)
                         ],
                     )
@@ -328,9 +334,6 @@ def attribute_trajectory(
             )
         else:
             raise ActionSpaceNotSupported(model.action_space())
-
-        if processor is not None:
-            attributation = processor.transform(attributation)
 
         timesteps.append(replace(batch.timestep, attributations=attributation))
 

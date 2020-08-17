@@ -5,8 +5,19 @@ import shelve
 from abc import ABC
 from collections import abc, OrderedDict
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
-from typing import Iterator, Optional, Any, Sequence, Union, List, BinaryIO, Callable
+from typing import (
+    Iterator,
+    Optional,
+    Any,
+    Sequence,
+    Union,
+    List,
+    BinaryIO,
+    Callable,
+    Tuple,
+)
 
 import gym
 import numpy as np
@@ -31,49 +42,32 @@ class Attributation:
             [t.is_complied(obs_space) for t in self.top]
         )
 
-    def map(
-        self, fn: Callable[[AttributationLike], AttributationLike]
-    ) -> Attributation:
-        return Attributation(
-            picked=self.picked.map(fn), top=[t.map(fn) for t in self.top],
-        )
-
 
 @dataclass
 class ActionAttributation(ABC):
     action: ActionLike
     prob: float
-    data: Union[AttributationLike, Sequence[AttributationLike]]
+    raw: Union[AttributationLike, Sequence[AttributationLike]]
+    normalized: Union[AttributationLike, Sequence[AttributationLike]]
 
     def is_complied(self, obs_space: gym.Space) -> bool:
-        raise NotImplementedError
-
-    def map(
-        self, fn: Callable[[AttributationLike], AttributationLike]
-    ) -> ActionAttributation:
         raise NotImplementedError
 
 
 @dataclass
 class DiscreteActionAttributation(ActionAttributation):
-    data: AttributationLike
+    raw: AttributationLike
+    normalized: AttributationLike
 
     def is_complied(self, obs_space: gym.Space) -> bool:
         obs_space = remove_value_constraints_from_space(obs_space)
-        return obs_space.contains(self.data)
-
-    def action(self) -> AttributationLike:
-        return self.data
-
-    def map(
-        self, fn: Callable[[AttributationLike], AttributationLike]
-    ) -> ActionAttributation:
-        return DiscreteActionAttributation(fn(self.data))
+        return obs_space.contains(self.raw)
 
 
 @dataclass
 class MultiDiscreteActionAttributation(ActionAttributation):
-    data: Sequence[AttributationLike]
+    raw: Sequence[AttributationLike]
+    normalized: Sequence[AttributationLike]
 
     def is_complied(self, obs_space: gym.Space) -> bool:
         obs_space = remove_value_constraints_from_space(obs_space)
@@ -84,42 +78,36 @@ class MultiDiscreteActionAttributation(ActionAttributation):
             ]
         )
 
-    def map(
-        self, fn: Callable[[AttributationLike], AttributationLike]
-    ) -> ActionAttributation:
-        return MultiDiscreteActionAttributation(
-            [fn(self.sub_action(i)) for i in range(self.num_sub_actions())]
-        )
-
     def num_sub_actions(self) -> int:
-        return len(self.data)
+        return len(self.raw)
 
     def sub_action(self, index: int) -> AttributationLike:
-        return self.data[index]
+        return self.raw[index]
 
 
-@dataclass
-class TupleActionAttributation(ActionAttributation):
-    data: Sequence[AttributationLike]
-
-    def is_complied(self, obs_space: gym.Space) -> bool:
-        obs_space = remove_value_constraints_from_space(obs_space)
-        return all(
-            [obs_space.contains(self.space(i)) for i in range(self.num_spaces())]
-        )
-
-    def map(
-        self, fn: Callable[[AttributationLike], AttributationLike]
-    ) -> ActionAttributation:
-        return TupleActionAttributation(
-            [fn(self.space(i)) for i in range(self.num_spaces())]
-        )
-
-    def num_spaces(self) -> int:
-        return len(self.data)
-
-    def space(self, index: int) -> AttributationLike:
-        return self.data[index]
+# @dataclass
+# class TupleActionAttributation(ActionAttributation):
+#     raw: Sequence[AttributationLike]
+#     normalized: Sequence[AttributationLike]
+#
+#     def is_complied(self, obs_space: gym.Space) -> bool:
+#         obs_space = remove_value_constraints_from_space(obs_space)
+#         return all(
+#             [obs_space.contains(self.space(i)) for i in range(self.num_spaces())]
+#         )
+#
+#     def map(
+#         self, fn: Callable[[AttributationLike], AttributationLike]
+#     ) -> ActionAttributation:
+#         return TupleActionAttributation(
+#             [fn(self.space(i)) for i in range(self.num_spaces())]
+#         )
+#
+#     def num_spaces(self) -> int:
+#         return len(self.data)
+#
+#     def space(self, index: int) -> AttributationLike:
+#         return self.data[index]
 
 
 @dataclass
@@ -133,8 +121,19 @@ class Timestep:
 
 
 @dataclass
+class Hotspot:
+    start: int
+    end: int
+    title: Optional[str] = None
+
+
+@dataclass
 class Trajectory(abc.Iterable, abc.Sized):
     timesteps: Sequence[Timestep]
+    normalized: Optional[bool] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    hotspots: List[Hotspot] = field(default_factory=list)
 
     # Right now we only support single timestep retrieval
     def __getitem__(self, item: int) -> Timestep:
@@ -157,6 +156,11 @@ class Trajectory(abc.Iterable, abc.Sized):
 @dataclass
 class Rollout:
     trajectories: Sequence[Trajectory]
+    env: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    recorded_at: Optional[datetime] = None
+    __version__: Optional[Tuple[int, int, int]] = None
 
     def __iter__(self) -> Iterator[Trajectory]:
         return iter(self.trajectories)
