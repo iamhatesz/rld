@@ -23,6 +23,4 @@ def baseline_builder(obs: ObsLike):
 model = get_model()
 
 
-config = Config(
-    model=model, baseline=baseline_builder, target=AttributationTarget.PICKED,
-)
+config = Config(model=model, baseline=baseline_builder, target=AttributationTarget.ALL,)

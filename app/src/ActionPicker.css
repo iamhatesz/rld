@@ -1,0 +1,14 @@
+.action-picker {
+    width: 100%;
+}
+
+.action-picker .dropdown-toggle,
+.action-picker .dropdown-menu {
+    width: 100%;
+}
+
+.selected-action {
+    display: block;
+    margin: 10px auto;
+    text-align: center;
+}

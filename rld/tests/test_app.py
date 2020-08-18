@@ -17,29 +17,27 @@ class TestApp(unittest.TestCase):
         self.assertIsInstance(response, Response)
         self.assertEqual(response.status_code, 404)
 
-    def test_get_trajectories_returns_valid_response(self):
-        response = self.client.get("/trajectories")
+    def test_get_rollout_returns_valid_response(self):
+        response = self.client.get("/rollout")
         self.assertIsInstance(response, Response)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "application/json")
 
-    def test_get_trajectories_returns_valid_trajectories_indices(self):
-        response = self.client.get("/trajectories")
+    def test_get_rollout_returns_valid_trajectories_indices(self):
+        response = self.client.get("/rollout")
         self.assertIsInstance(response.json, dict)
-        self.assertEqual(response.json["length"], len(self.rollout))
         self.assertIsInstance(response.json["trajectories"], list)
         self.assertGreater(len(response.json["trajectories"]), 0)
 
-    def test_get_trajectory_returns_valid_response(self):
-        response = self.client.get("/trajectory/0")
+    def test_get_rollout_trajectory_returns_valid_response(self):
+        response = self.client.get("/rollout/trajectory/0")
         self.assertIsInstance(response, Response)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "application/json")
 
-    def test_get_trajectory_returns_valid_timesteps(self):
-        response = self.client.get("/trajectory/0")
+    def test_get_rollout_trajectory_returns_valid_timesteps(self):
+        response = self.client.get("/rollout/trajectory/0")
         self.assertIsInstance(response.json, dict)
-        self.assertEqual(response.json["length"], len(self.rollout.trajectories[0]))
         self.assertIsInstance(response.json["timesteps"], list)
         self.assertGreater(len(response.json["timesteps"]), 0)
         self.assertIsInstance(response.json["timesteps"][0], dict)

@@ -1,3 +1,5 @@
+from dataclasses import asdict
+
 import numpy as np
 from flask import Flask, render_template, jsonify
 from flask.json import JSONEncoder
@@ -15,6 +17,7 @@ class NumpyJSONEncoder(JSONEncoder):
 
 
 def init(rollout: Rollout, debug: bool = False) -> Flask:
+    this_rollout = rollout
     app = Flask(__name__, template_folder="ui", static_folder="ui/static")
     app.json_encoder = NumpyJSONEncoder
     if debug:
@@ -26,19 +29,18 @@ def init(rollout: Rollout, debug: bool = False) -> Flask:
     def index():
         return render_template("index.html", episode={})
 
-    @app.route("/trajectories", methods=["GET"])
-    def trajectories():
-        trajectories = list(range(len(rollout)))
-        return jsonify(length=len(trajectories), trajectories=trajectories)
+    @app.route("/rollout", methods=["GET"])
+    def rollout():
+        return jsonify(**asdict(this_rollout))
 
-    @app.route("/trajectory/<index>", methods=["GET"])
+    @app.route("/rollout/trajectory/<index>", methods=["GET"])
     def trajectory(index: str):
         index = int(index)
         try:
-            this_trajectory = rollout.trajectories[index]
+            this_trajectory = this_rollout.trajectories[index]
         except IndexError:
             raise TrajectoryNotFound()
-        return jsonify(length=len(this_trajectory), timesteps=this_trajectory.timesteps)
+        return jsonify(**asdict(this_trajectory))
 
     @app.errorhandler(EndpointNotFound)
     @app.errorhandler(TrajectoryNotFound)
