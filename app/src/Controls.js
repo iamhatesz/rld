@@ -23,7 +23,7 @@ class Controls extends React.Component {
 
   trajectoryLength() {
     if (this.isTrajectoryLoaded()) {
-      return this.props.currentTrajectory.length;
+      return this.props.currentTrajectory.timesteps.length;
     } else {
       return 0;
     }
@@ -44,45 +44,57 @@ class Controls extends React.Component {
           <Col>
             <Form.Group controlId="buttons">
               <ButtonGroup aria-label="Control buttons">
-                <DropdownButton variant="light" as={ButtonGroup} title={`Trajectory: ${this.props.currentTrajectoryIndex}`}>
-                  {this.props.trajectories.map((id, index) =>
+                <DropdownButton
+                  variant="light"
+                  as={ButtonGroup}
+                  title={`Trajectory: ${this.props.currentTrajectoryIndex}`}
+                >
+                  {this.props.trajectories.map((trajectory, index) =>
                     <Dropdown.Item
-                      eventKey={id.toString()} key={id} onSelect={eventKey => this.props.fetchTrajectory(_.parseInt(eventKey))}>
-                      {id}
+                      eventKey={index.toString()}
+                      key={index}
+                      onSelect={eventKey => this.props.fetchTrajectory(_.parseInt(eventKey))}
+                    >
+                      {index}
                     </Dropdown.Item>
                   )}
                 </DropdownButton>
                 <Button
                   variant="light"
                   disabled={!this.isTrajectoryLoaded()}
-                  onClick={this.props.rewindToBeginning}>
+                  onClick={this.props.rewindToBeginning}
+                >
                   <MdFirstPage/>
                 </Button>
                 <Button
                   variant="light"
                   disabled={!this.isTrajectoryLoaded()}
-                  onClick={this.props.rewindToPrevious}>
+                  onClick={this.props.rewindToPrevious}
+                >
                   <MdChevronLeft/>
                 </Button>
                 <Button
                   variant="light"
                   disabled={!this.isTrajectoryLoaded()}
-                  onClick={this.props.togglePlaying}>
+                  onClick={this.props.togglePlaying}
+                >
                   {this.isPlaying() ? <MdPause/> : <MdPlayArrow/>}
                 </Button>
                 <Button
                   variant="light"
                   disabled={!this.isTrajectoryLoaded()}
-                  onClick={this.props.rewindToNext}>
+                  onClick={this.props.rewindToNext}
+                >
                   <MdChevronRight/>
                 </Button>
                 <Button
                   variant="light"
                   disabled={!this.isTrajectoryLoaded()}
-                  onClick={this.props.rewindToEnd}>
+                  onClick={this.props.rewindToEnd}
+                >
                   <MdLastPage/>
                 </Button>
-                </ButtonGroup>
+              </ButtonGroup>
             </Form.Group>
           </Col>
           <Col>
@@ -97,7 +109,7 @@ class Controls extends React.Component {
                   type="range"
                   max={this.lastValidTrajectoryIndex()}
                   value={this.props.currentTimestepIndex}
-                  onChange={this.props.rewindToPosition}
+                  onChange={(e) => this.props.rewindToPosition(_.toInteger(e.target.value))}
                   disabled={!this.isTrajectoryLoaded()} />
               </Col>
             </Form.Group>

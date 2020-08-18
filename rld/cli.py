@@ -7,8 +7,7 @@ from rld.app import init
 from rld.attributation import (
     AttributationTrajectoryIterator,
     attribute_trajectory,
-    NormalizeAttributationProcessor,
-    AttributationVisualizationSign,
+    AttributationNormalizer,
 )
 from rld.config import Config
 from rld.exception import InvalidConfigProvided
@@ -52,19 +51,9 @@ def convert(out: str, rollout: str):
 @main.command()
 @click.option("--out", default=str(Path.home() / "rollout.rld"))
 @click.option("--rllib", default=False, is_flag=True)
-@click.option("--normalize", default=False, is_flag=True)
-@click.option(
-    "--sign",
-    default="all",
-    type=click.Choice(
-        ["all", "positive", "negative", "absolute_value"], case_sensitive=False
-    ),
-)
 @click.argument("config")
 @click.argument("rollout")
-def attribute(
-    out: str, rllib: bool, normalize: bool, sign: str, config: str, rollout: str
-):
+def attribute(out: str, rllib: bool, config: str, rollout: str):
     """
     This script calculates attributations for the given `rollout`, using configuration
     (e.g. a model definition) stored in the `config` file.
@@ -87,13 +76,12 @@ def attribute(
         else:
             reader = FileRolloutReader(rollout_path)
 
-        if normalize:
-            sign = AttributationVisualizationSign[sign.upper()]
-            processor = NormalizeAttributationProcessor(
-                config.model.obs_space(), sign=sign
-            )
-        else:
-            processor = None
+        normalizer = AttributationNormalizer(
+            obs_space=config.model.obs_space(),
+            obs_image_channel_dim=config.normalize_obs_image_channel_dim,
+            sign=config.normalize_sign,
+            outlier_percentile=config.normalize_outlier_percentile,
+        )
 
         for trajectory in reader:
             trajectory_it = AttributationTrajectoryIterator(
@@ -103,7 +91,7 @@ def attribute(
                 target=config.target,
             )
             attr_trajectory = attribute_trajectory(
-                trajectory_it, model=config.model, processor=processor
+                trajectory_it, model=config.model, normalizer=normalizer
             )
             rollout_writer.write(attr_trajectory)
 

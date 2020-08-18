@@ -9,11 +9,13 @@ from rld.attributation import (
     AttributationTrajectoryIterator,
     AttributationTarget,
     attribute_trajectory,
+    AttributationNormalizer,
+    AttributationNormalizationMode,
 )
-from rld.model import Model
+from rld.model import Model, RayModelWrapper
 from rld.tests.resources.envs import ALL_ENVS, collect_rollout
 from rld.tests.resources.models import ALL_MODELS
-from rld.wrappers import RayModelWrapper
+from rld.tests.resources.spaces import IMAGE_OBS_SPACE
 
 ALL_TRAINERS = [
     PGTrainer,
@@ -23,19 +25,28 @@ ALL_TRAINERS = [
 
 class TestAttributation(unittest.TestCase):
     def _collect_rollout_and_validate_attributations(self, env: gym.Env, model: Model):
-        if isinstance(model, RayModelWrapper):
-            obs_space = model.original_obs_space()
-        else:
-            obs_space = model.obs_space()
-
+        obs_space = model.obs_space()
         rollout = collect_rollout(env, episodes=2, max_steps_per_episode=10)
+
+        if obs_space is IMAGE_OBS_SPACE:
+            obs_image_channel_dim = 2
+        else:
+            obs_image_channel_dim = None
+        normalizer = AttributationNormalizer(
+            obs_space=model.obs_space(),
+            obs_image_channel_dim=obs_image_channel_dim,
+            sign=AttributationNormalizationMode.ALL,
+            outlier_percentile=5,
+        )
 
         for trajectory in rollout:
             trajectory_it = AttributationTrajectoryIterator(
                 trajectory, model=model, baseline=None, target=AttributationTarget.TOP3,
             )
 
-            attr_trajectory = attribute_trajectory(trajectory_it, model)
+            attr_trajectory = attribute_trajectory(
+                trajectory_it, model, normalizer=normalizer
+            )
 
             for timestep in attr_trajectory:
                 self.assertIsNotNone(timestep.attributations)

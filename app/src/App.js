@@ -1,26 +1,27 @@
 import React from 'react';
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import Container from "react-bootstrap/Container";
 import Navbar from "react-bootstrap/Navbar";
 import Nav from "react-bootstrap/Nav";
-import Form from "react-bootstrap/Form";
-import Table from "react-bootstrap/Table";
-import Row from "react-bootstrap/Row";
 import _ from "lodash";
-import flatten from "keypather/flatten";
 import Controls from "./Controls";
-import Viewer from "./Viewer";
-import Col from "react-bootstrap/Col";
-import ListGroup from "react-bootstrap/ListGroup";
-import Card from "react-bootstrap/Card";
-import DropdownButton from "react-bootstrap/DropdownButton";
-import Dropdown from "react-bootstrap/Dropdown";
+import {BrowserRouter as Router, Link, Route, Switch} from "react-router-dom";
+import {CartPoleViewer} from "./viewer/cartpole";
+import RolloutPage from "./RolloutPage";
+import AttributationPage from "./AttributationPage";
+
+const VIEWER_REGISTRY = {
+  "cartpole": CartPoleViewer,
+};
 
 class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      title: null,
+      description: null,
+      env: null,
+      recordedAt: null,
       trajectories: [],
       currentTrajectoryIndex: 0,
       currentTrajectory: null,
@@ -28,7 +29,9 @@ class App extends React.Component {
       currentTimestep: null,
       playing: null,
       filterPhrase: "",
+      selectedAction: null,
     };
+    this.viewer = new VIEWER_REGISTRY[this.props.viewerId]();
   }
 
   componentDidMount() {
@@ -40,20 +43,29 @@ class App extends React.Component {
   }
 
   fetchTrajectoriesList() {
-    fetch(this.getEndpointUrl("trajectories"))
+    fetch(this.getEndpointUrl("rollout"))
       .then(response => response.json())
       .then(data => this.setState({
+        title: data["title"],
+        description: data["description"],
+        env: data["env"],
+        recordedAt: data["recorded_at"],
         trajectories: data["trajectories"],
       }))
       .then(() => this.fetchTrajectory(0));
   }
 
   fetchTrajectory(trajectoryIndex) {
-    fetch(this.getEndpointUrl("trajectory", trajectoryIndex))
+    fetch(this.getEndpointUrl("rollout", "trajectory", trajectoryIndex))
       .then(response => response.json())
       .then(data => this.setState({
         currentTrajectoryIndex: trajectoryIndex,
-        currentTrajectory: data,
+        currentTrajectory: {
+          title: data["title"],
+          description: data["description"],
+          hotspots: data["hotspots"],
+          timesteps: data["timesteps"],
+        }
       }))
       .then(() => this.rewindTo(0));
   }
@@ -72,7 +84,7 @@ class App extends React.Component {
 
   trajectoryLength() {
     if (this.isTrajectoryLoaded()) {
-      return this.state.currentTrajectory.length;
+      return this.state.currentTrajectory.timesteps.length;
     } else {
       return 0;
     }
@@ -92,9 +104,9 @@ class App extends React.Component {
     }
     this.setState({
       currentTimestepIndex: timestepIndex,
-      currentTimestep: this.state.currentTrajectory.timesteps[this.state.currentTimestepIndex],
-    });
-    this.timestepFeatures();
+      currentTimestep: this.state.currentTrajectory.timesteps[timestepIndex],
+      selectedAction: this.state.currentTrajectory.timesteps[timestepIndex].attributations.picked,
+    }, () => this.viewer.update(this.state.currentTimestep));
   }
 
   rewindToBeginning = () => {
@@ -117,10 +129,9 @@ class App extends React.Component {
     this.rewindTo(this.lastValidTrajectoryIndex());
   }
 
-  rewindToPosition = (e) => {
-    const timestep = _.toInteger(e.target.value);
+  rewindToPosition = (index) => {
     this.pausePlaying();
-    this.rewindTo(timestep);
+    this.rewindTo(index);
   }
 
   togglePlaying = () => {
@@ -133,7 +144,7 @@ class App extends React.Component {
 
   startPlaying = () => {
     this.setState({
-      playing: setInterval(this.playTick.bind(this), 500),
+      playing: setInterval(this.playTick.bind(this), 50),
     });
   }
 
@@ -156,27 +167,32 @@ class App extends React.Component {
     });
   }
 
-  timestepFeatures() {
-    if (!this.isTimestepLoaded()) {
-      return [];
-    }
-    const timestep = this.state.currentTimestep;
-    const obs = timestep.obs;
-    const attr = timestep.attributations.data;
-    const labels = Object.entries(flatten(obs)).map((value) => _.first(value));
-    return _.zip(labels, obs, attr).filter(([label, ...rest]) => label.includes(this.state.filterPhrase));
+  selectPickedAction = (e) => {
+    this.setState({
+      selectedAction: this.state.currentTimestep.attributations.picked
+    });
+  }
+
+  selectAction(actionId) {
+    this.setState({
+      selectedAction: this.state.currentTimestep.attributations.top[actionId]
+    });
   }
 
   render() {
     return (
-      <div>
+      <Router>
         <Navbar bg="light" expand="lg" sticky="top">
           <Navbar.Brand href="/">rld</Navbar.Brand>
           <Navbar.Toggle aria-controls="main-nav"/>
           <Navbar.Collapse id="main-nav">
             <Nav className="mr-auto">
-              <Nav.Link href="/viewer">Rollout</Nav.Link>
-              <Nav.Link href="/attribution">Observation attributation</Nav.Link>
+              <Nav.Link as={Link} to="/">
+                Rollout
+              </Nav.Link>
+              <Nav.Link as={Link} to="/attributation">
+                Attributation
+              </Nav.Link>
             </Nav>
           </Navbar.Collapse>
           <Controls
@@ -194,73 +210,37 @@ class App extends React.Component {
             rewindToPosition={this.rewindToPosition}
             togglePlaying={this.togglePlaying}/>
         </Navbar>
-        <Container fluid>
-          <Row>
-            <Col>
-              <Row>
-                <Form className="full-width">
-                  <Form.Control
-                    type="text"
-                    value={this.state.filterPhrase}
-                    onChange={this.filterComponents}
-                    placeholder="Filter components..."
-                    size="sm"
-                    className="full-width"/>
-                </Form>
-              </Row>
-              <Row>
-                <Table striped bordered hover>
-                  <thead>
-                    <tr>
-                      <th className="w-25">Component</th>
-                      <th className="w-25">Label</th>
-                      <th className="w-15">Raw value</th>
-                      <th className="w-20">Real value</th>
-                      <th className="w-15">Attributation</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                  {this.timestepFeatures().map(([label, obs, attr]) =>
-                    <tr key={label}>
-                      <td>{label}</td>
-                      <td>n/a</td>
-                      <td>{obs.toFixed(4)}</td>
-                      <td>{obs.toFixed(4)} unit</td>
-                      <td>{attr.toFixed(2)}</td>
-                    </tr>
-                  )}
-                  </tbody>
-                </Table>
-              </Row>
-              <Row>
-                {this.isTimestepLoaded() ? <Viewer timestep={this.state.currentTimestep}/> : null}
-              </Row>
-            </Col>
-            <Col xs={2} className="bg-light">
-              <Container fluid>
-                <Row>
-                  <DropdownButton variant="secondary" title="Select action" className="full-width">
-                    <Dropdown.Item>LEFT</Dropdown.Item>
-                    <Dropdown.Item>RIGHT</Dropdown.Item>
-                  </DropdownButton>
-                </Row>
-                <Row>
-                  <pre className="action">
-                    LEFT
-                  </pre>
-                </Row>
-              </Container>
-            </Col>
-          </Row>
-
-        </Container>
-      </div>
+        <Switch>
+          <Route path="/" exact>
+            {this.isTimestepLoaded() && (
+              <RolloutPage
+                currentTimestep={this.state.currentTimestep}
+                viewer={this.viewer}
+              />
+            )}
+          </Route>
+          <Route path="/attributation" exact>
+            {this.isTimestepLoaded() && (
+              <AttributationPage
+                currentTimestep={this.state.currentTimestep}
+                selectedAction={this.state.selectedAction}
+                filterPhrase={this.state.filterPhrase}
+                filterComponents={this.filterComponents}
+                selectPickedAction={this.selectPickedAction}
+                selectAction={this.selectAction.bind(this)}
+                viewer={this.viewer}
+              />
+            )}
+          </Route>
+        </Switch>
+      </Router>
     );
   }
 }
 
 App.defaultProps = {
   backendUrl: "http://localhost:5000/",
+  viewerId: "cartpole",
 };
 
 export default App;
