@@ -3,6 +3,7 @@ name = "rld"
 version = "0.1.0"
 description = ""
 authors = ["Tomasz Wrona <tomasz@wrona.me>"]
+include = ["rld/app/**/*"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
