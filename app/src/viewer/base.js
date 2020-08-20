@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import _ from 'lodash';
 import ImageEncoder from '../utils/imageEncoder';
 import { flattenStackedPixel, identityPixelColor } from '../utils/math';
 
