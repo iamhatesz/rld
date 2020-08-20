@@ -1,5 +1,7 @@
 # rld
 
+![Build and test](https://github.com/iamhatesz/rld/workflows/Build%20and%20test/badge.svg)
+
 A development tool for evaluation and interpretability of reinforcement learning agents.
 
 ![rld demo gif](https://imgur.com/hodTIcj.gif)
