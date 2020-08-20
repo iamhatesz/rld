@@ -100,7 +100,7 @@ def attribute(out: str, rllib: bool, config: str, rollout: str):
 
 @main.command()
 @click.option("--viewer", default="none")
-@click.option("--debug", default=False)
+@click.option("--debug/--no-debug", default=False)
 @click.argument("rollout")
 def start(viewer: str, debug: bool, rollout: str):
     """
