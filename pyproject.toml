@@ -1,8 +1,22 @@
 [tool.poetry]
 name = "rld"
 version = "0.1.0"
-description = ""
+description = "A development tool for evaluation and interpretability of reinforcement learning agents."
+license = "MIT"
 authors = ["Tomasz Wrona <tomasz@wrona.me>"]
+readme = "README.md"
+repository = "https://github.com/iamhatesz/rld"
+keywords = ["reinforcement learning", "development-tools", "debugging-tools", "interpretability"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Flask",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: JavaScript",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Debuggers",
+    "Typing :: Typed"
+]
 include = ["rld/app/**/*"]
 
 [tool.poetry.dependencies]
