@@ -2,6 +2,8 @@
 
 A development tool for evaluation and interpretability of reinforcement learning agents.
 
+![rld demo gif](https://imgur.com/hodTIcj.gif)
+
 ## Installation
 
 TBD
