@@ -16,7 +16,9 @@ class NumpyJSONEncoder(JSONEncoder):
         return super().default(o)
 
 
-def init(rollout: Rollout, viewer: str = "none", debug: bool = False) -> Flask:
+def init(
+    rollout: Rollout, host: str, port: int, viewer: str = "none", debug: bool = False
+) -> Flask:
     this_rollout = rollout
     app = Flask(__name__, template_folder="app", static_folder="app/static")
     app.json_encoder = NumpyJSONEncoder
@@ -27,7 +29,7 @@ def init(rollout: Rollout, viewer: str = "none", debug: bool = False) -> Flask:
 
     @app.route("/")
     def index() -> Response:
-        return render_template("index.html", viewer=viewer)
+        return render_template("index.html", host=host, port=port, viewer=viewer)
 
     @app.route("/rollout", methods=["GET"])
     def rollout() -> Response:

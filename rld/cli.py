@@ -99,10 +99,12 @@ def attribute(out: str, rllib: bool, config: str, rollout: str):
 
 
 @main.command()
+@click.option("--host", default="localhost")
+@click.option("--port", default=5000)
 @click.option("--viewer", default="none")
 @click.option("--debug/--no-debug", default=False)
 @click.argument("rollout")
-def start(viewer: str, debug: bool, rollout: str):
+def start(host: str, port: int, viewer: str, debug: bool, rollout: str):
     """
     This script runs web server serving application to visualize calculated
     attributations.
@@ -113,9 +115,14 @@ def start(viewer: str, debug: bool, rollout: str):
 
     rollout_obj = FileRolloutReader(rollout_path)
     # TODO Refactor this
-    app = init(Rollout([t for t in rollout_obj]), viewer=viewer, debug=debug)
-    # TODO Make this dependent on the debug flag value
-    app.run(debug=debug)
+    app = init(
+        Rollout([t for t in rollout_obj]),
+        host=host,
+        port=port,
+        viewer=viewer,
+        debug=debug,
+    )
+    app.run(host=host, port=port, debug=debug)
 
 
 def load_config(config_path: Path) -> Config:
