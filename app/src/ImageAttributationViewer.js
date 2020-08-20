@@ -38,10 +38,10 @@ class ImageAttributationViewer extends React.Component {
       <Container>
         <Row>
           <Col>
-            <img src={this.obsImage()} width="300" height="300" />
+            <img src={this.obsImage()} width="300" height="300" alt="observation" />
           </Col>
           <Col>
-            <img src={this.attrImage()} width="300" height="300" />
+            <img src={this.attrImage()} width="300" height="300" alt="attributation" />
           </Col>
         </Row>
       </Container>

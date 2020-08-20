@@ -4,25 +4,6 @@ import _ from 'lodash';
 import ImageEncoder from '../utils/imageEncoder';
 import { flattenStackedPixel, identityPixelColor } from '../utils/math';
 
-function floatColorToIntColor(value) {
-  return Math.floor(_.clamp(value, 0, 1) * 255);
-}
-
-function attributationColor(value, max) {
-  const saturation = 1.0;
-  const lightnessAtMin = 0.35;
-  const lightnessAtMax = 1.0;
-  const huePositive = 0.3;
-  const hueNegative = 1.0;
-
-  const lightness =
-    lightnessAtMin +
-    (1.0 - Math.abs(value)) * (lightnessAtMax - lightnessAtMin);
-  const hue = value > 0 ? huePositive : hueNegative;
-
-  return [hue, saturation, lightness];
-}
-
 class Viewer {
   domElement() {
     throw new Error('Not implemented');
