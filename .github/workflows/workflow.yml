@@ -26,6 +26,8 @@ jobs:
       run: |
         cd app/ && npm install
     - name: Build app
+      env:
+        CI: false
       run: |
         cd app/ && npm run-script build
         mv build ../rld/app
