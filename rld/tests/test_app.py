@@ -10,7 +10,9 @@ class TestApp(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.rollout = collect_rollout(BoxObsDiscreteActionEnv())
-        cls.client = init(cls.rollout).test_client()
+        cls.client = init(
+            cls.rollout, host="localhost", port=5000, viewer="none", debug=False
+        ).test_client()
 
     def test_accessing_invalid_endpoint_returns_error_message(self):
         response = self.client.get("/invalid")
