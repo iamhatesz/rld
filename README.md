@@ -8,7 +8,9 @@ A development tool for evaluation and interpretability of reinforcement learning
 
 ## Installation
 
-TBD
+```bash
+pip install rld
+```
 
 ## Usage
 
