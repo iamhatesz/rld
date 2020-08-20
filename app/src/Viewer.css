@@ -18,6 +18,21 @@
     height: 200px;
 }
 
+.viewer-scene canvas {
+    margin: 0 auto;
+    display: block;
+}
+
+.viewer-scene img {
+    margin: 0 auto;
+    display: block;
+}
+
+.viewer-scene p {
+    text-align: center;
+    color: white;
+}
+
 .viewer-action {
     position: absolute;
     top: 10px;
@@ -34,3 +49,15 @@
     z-index: 100;
     text-align: right;
 }
+
+.image-container {
+    margin: 0 auto;
+}
+
+/*.viewer-side .image-container {*/
+/*    width: 100%;*/
+/*}*/
+
+/*.viewer-side .image img {*/
+/*    width: 100%;*/
+/*}*/

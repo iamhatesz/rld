@@ -79,7 +79,7 @@ def attribute(out: str, rllib: bool, config: str, rollout: str):
         normalizer = AttributationNormalizer(
             obs_space=config.model.obs_space(),
             obs_image_channel_dim=config.normalize_obs_image_channel_dim,
-            sign=config.normalize_sign,
+            mode=config.normalize_sign,
             outlier_percentile=config.normalize_outlier_percentile,
         )
 
@@ -99,9 +99,10 @@ def attribute(out: str, rllib: bool, config: str, rollout: str):
 
 
 @main.command()
+@click.option("--viewer", default="none")
 @click.option("--debug", default=True)
 @click.argument("rollout")
-def start(debug: bool, rollout: str):
+def start(viewer: str, debug: bool, rollout: str):
     """
     This script runs web server serving application to visualize calculated
     attributations.
@@ -112,7 +113,7 @@ def start(debug: bool, rollout: str):
 
     rollout_obj = FileRolloutReader(rollout_path)
     # TODO Refactor this
-    app = init(Rollout([t for t in rollout_obj]), debug=debug)
+    app = init(Rollout([t for t in rollout_obj]), viewer=viewer, debug=debug)
     # TODO Make this dependent on the debug flag value
     app.run(debug=debug)
 

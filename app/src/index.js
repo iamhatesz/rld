@@ -3,11 +3,14 @@ import ReactDOM from 'react-dom';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
 
+const rootElement = document.getElementById('root');
+const viewerId = rootElement.getAttribute('data-viewer');
+
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <App viewerId={viewerId.startsWith('{') ? 'none' : viewerId} />
   </React.StrictMode>,
-  document.getElementById('root')
+  rootElement
 );
 
 // If you want your app to work offline and load faster, you can change

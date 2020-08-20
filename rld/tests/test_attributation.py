@@ -35,7 +35,7 @@ class TestAttributation(unittest.TestCase):
         normalizer = AttributationNormalizer(
             obs_space=model.obs_space(),
             obs_image_channel_dim=obs_image_channel_dim,
-            sign=AttributationNormalizationMode.ALL,
+            mode=AttributationNormalizationMode.ALL,
             outlier_percentile=5,
         )
 

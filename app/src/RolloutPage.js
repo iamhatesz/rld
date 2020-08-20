@@ -1,6 +1,6 @@
 import React from 'react';
-import Viewer from "./Viewer";
-import Container from "react-bootstrap/Container";
+import Viewer from './Viewer';
+import Container from 'react-bootstrap/Container';
 
 class RolloutPage extends React.Component {
   render() {

@@ -1,7 +1,7 @@
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
 import numpy as np
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, Response
 from flask.json import JSONEncoder
 from werkzeug.exceptions import NotFound
 
@@ -16,9 +16,9 @@ class NumpyJSONEncoder(JSONEncoder):
         return super().default(o)
 
 
-def init(rollout: Rollout, debug: bool = False) -> Flask:
+def init(rollout: Rollout, viewer: str = "none", debug: bool = False) -> Flask:
     this_rollout = rollout
-    app = Flask(__name__, template_folder="ui", static_folder="ui/static")
+    app = Flask(__name__, template_folder="app", static_folder="app/static")
     app.json_encoder = NumpyJSONEncoder
     if debug:
         from flask_cors import CORS
@@ -26,20 +26,33 @@ def init(rollout: Rollout, debug: bool = False) -> Flask:
         CORS(app)
 
     @app.route("/")
-    def index():
-        return render_template("index.html", episode={})
+    def index() -> Response:
+        return render_template("index.html", viewer=viewer)
 
     @app.route("/rollout", methods=["GET"])
-    def rollout():
-        return jsonify(**asdict(this_rollout))
+    def rollout() -> Response:
+        return jsonify(
+            **asdict(
+                replace(
+                    this_rollout,
+                    trajectories=list(range(len(this_rollout.trajectories))),
+                )
+            )
+        )
 
     @app.route("/rollout/trajectory/<index>", methods=["GET"])
-    def trajectory(index: str):
+    def trajectory(index: str) -> Response:
         index = int(index)
         try:
             this_trajectory = this_rollout.trajectories[index]
         except IndexError:
             raise TrajectoryNotFound()
+        if viewer == "atari":
+            # TODO For Atari we are sending only a few timesteps,
+            #  as buffering is not yet implemented
+            this_trajectory = replace(
+                this_trajectory, timesteps=this_trajectory.timesteps[:10]
+            )
         return jsonify(**asdict(this_trajectory))
 
     @app.errorhandler(EndpointNotFound)

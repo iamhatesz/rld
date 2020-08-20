@@ -1,17 +1,22 @@
 import React from 'react';
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import Navbar from "react-bootstrap/Navbar";
-import Nav from "react-bootstrap/Nav";
-import _ from "lodash";
-import Controls from "./Controls";
-import {BrowserRouter as Router, Link, Route, Switch} from "react-router-dom";
-import {CartPoleViewer} from "./viewer/cartpole";
-import RolloutPage from "./RolloutPage";
-import AttributationPage from "./AttributationPage";
+import Navbar from 'react-bootstrap/Navbar';
+import Nav from 'react-bootstrap/Nav';
+import _ from 'lodash';
+import Controls from './Controls';
+import { BrowserRouter as Router, Link, Route, Switch } from 'react-router-dom';
+import { CartPoleViewer } from './viewer/cartpole';
+import RolloutPage from './RolloutPage';
+import AttributationPage from './AttributationPage';
+import { AtariViewer } from './viewer/atari';
+import Spinner from 'react-bootstrap/Spinner';
+import { NoneViewer } from './viewer/none';
 
 const VIEWER_REGISTRY = {
-  "cartpole": CartPoleViewer,
+  none: NoneViewer,
+  cartpole: CartPoleViewer,
+  atari: AtariViewer,
 };
 
 class App extends React.Component {
@@ -28,8 +33,9 @@ class App extends React.Component {
       currentTimestepIndex: 0,
       currentTimestep: null,
       playing: null,
-      filterPhrase: "",
+      filterPhrase: '',
       selectedAction: null,
+      fetchesInProgress: 0,
     };
     this.viewer = new VIEWER_REGISTRY[this.props.viewerId]();
   }
@@ -39,35 +45,59 @@ class App extends React.Component {
   }
 
   getEndpointUrl(...parts) {
-    return this.props.backendUrl + parts.map(elem => _.toString(elem)).join("/");
+    return (
+      this.props.backendUrl + parts.map((elem) => _.toString(elem)).join('/')
+    );
+  }
+
+  withLoading(promise) {
+    this.setState(
+      (prevState) => ({
+        fetchesInProgress: prevState.fetchesInProgress + 1,
+      }),
+      () =>
+        promise().then(() =>
+          this.setState((prevState) => ({
+            fetchesInProgress: prevState.fetchesInProgress - 1,
+          }))
+        )
+    );
   }
 
   fetchTrajectoriesList() {
-    fetch(this.getEndpointUrl("rollout"))
-      .then(response => response.json())
-      .then(data => this.setState({
-        title: data["title"],
-        description: data["description"],
-        env: data["env"],
-        recordedAt: data["recorded_at"],
-        trajectories: data["trajectories"],
-      }))
-      .then(() => this.fetchTrajectory(0));
+    this.withLoading(() =>
+      fetch(this.getEndpointUrl('rollout'))
+        .then((response) => response.json())
+        .then((data) =>
+          this.setState({
+            title: data['title'],
+            description: data['description'],
+            env: data['env'],
+            recordedAt: data['recorded_at'],
+            trajectories: data['trajectories'],
+          })
+        )
+        .then(() => this.fetchTrajectory(0))
+    );
   }
 
   fetchTrajectory(trajectoryIndex) {
-    fetch(this.getEndpointUrl("rollout", "trajectory", trajectoryIndex))
-      .then(response => response.json())
-      .then(data => this.setState({
-        currentTrajectoryIndex: trajectoryIndex,
-        currentTrajectory: {
-          title: data["title"],
-          description: data["description"],
-          hotspots: data["hotspots"],
-          timesteps: data["timesteps"],
-        }
-      }))
-      .then(() => this.rewindTo(0));
+    this.withLoading(() =>
+      fetch(this.getEndpointUrl('rollout', 'trajectory', trajectoryIndex))
+        .then((response) => response.json())
+        .then((data) =>
+          this.setState({
+            currentTrajectoryIndex: trajectoryIndex,
+            currentTrajectory: {
+              title: data['title'],
+              description: data['description'],
+              hotspots: data['hotspots'],
+              timesteps: data['timesteps'],
+            },
+          })
+        )
+        .then(() => this.rewindTo(0))
+    );
   }
 
   isTrajectoryLoaded() {
@@ -76,6 +106,10 @@ class App extends React.Component {
 
   isTimestepLoaded() {
     return this.state.currentTimestep !== null;
+  }
+
+  isFetchInProgress() {
+    return this.state.fetchesInProgress > 0;
   }
 
   isPlaying() {
@@ -102,37 +136,41 @@ class App extends React.Component {
     if (timestepIndex < 0 || timestepIndex >= this.trajectoryLength()) {
       return false;
     }
-    this.setState({
-      currentTimestepIndex: timestepIndex,
-      currentTimestep: this.state.currentTrajectory.timesteps[timestepIndex],
-      selectedAction: this.state.currentTrajectory.timesteps[timestepIndex].attributations.picked,
-    }, () => this.viewer.update(this.state.currentTimestep));
+    this.setState(
+      {
+        currentTimestepIndex: timestepIndex,
+        currentTimestep: this.state.currentTrajectory.timesteps[timestepIndex],
+        selectedAction: this.state.currentTrajectory.timesteps[timestepIndex]
+          .attributations.picked,
+      },
+      () => this.viewer.update(this.state.currentTimestep)
+    );
   }
 
   rewindToBeginning = () => {
     this.pausePlaying();
     this.rewindTo(0);
-  }
+  };
 
   rewindToPrevious = () => {
     this.pausePlaying();
     this.rewindTo(this.state.currentTimestepIndex - 1);
-  }
+  };
 
   rewindToNext = () => {
     this.pausePlaying();
     this.rewindTo(this.state.currentTimestepIndex + 1);
-  }
+  };
 
   rewindToEnd = () => {
     this.pausePlaying();
     this.rewindTo(this.lastValidTrajectoryIndex());
-  }
+  };
 
   rewindToPosition = (index) => {
     this.pausePlaying();
     this.rewindTo(index);
-  }
+  };
 
   togglePlaying = () => {
     if (!this.isPlaying()) {
@@ -140,13 +178,13 @@ class App extends React.Component {
     } else {
       this.pausePlaying();
     }
-  }
+  };
 
   startPlaying = () => {
     this.setState({
       playing: setInterval(this.playTick.bind(this), 50),
     });
-  }
+  };
 
   pausePlaying = () => {
     if (this.isPlaying()) {
@@ -155,7 +193,7 @@ class App extends React.Component {
     this.setState({
       playing: null,
     });
-  }
+  };
 
   playTick() {
     this.rewindTo(this.state.currentTimestepIndex + 1);
@@ -165,26 +203,31 @@ class App extends React.Component {
     this.setState({
       filterPhrase: e.target.value,
     });
-  }
+  };
 
   selectPickedAction = (e) => {
     this.setState({
-      selectedAction: this.state.currentTimestep.attributations.picked
+      selectedAction: this.state.currentTimestep.attributations.picked,
     });
-  }
+  };
 
   selectAction(actionId) {
     this.setState({
-      selectedAction: this.state.currentTimestep.attributations.top[actionId]
+      selectedAction: this.state.currentTimestep.attributations.top[actionId],
     });
   }
 
   render() {
     return (
       <Router>
+        {this.isFetchInProgress() && (
+          <div className="loader">
+            <Spinner animation="grow" variant="primary" />
+          </div>
+        )}
         <Navbar bg="light" expand="lg" sticky="top">
           <Navbar.Brand href="/">rld</Navbar.Brand>
-          <Navbar.Toggle aria-controls="main-nav"/>
+          <Navbar.Toggle aria-controls="main-nav" />
           <Navbar.Collapse id="main-nav">
             <Nav className="mr-auto">
               <Nav.Link as={Link} to="/">
@@ -208,7 +251,8 @@ class App extends React.Component {
             rewindToNext={this.rewindToNext}
             rewindToEnd={this.rewindToEnd}
             rewindToPosition={this.rewindToPosition}
-            togglePlaying={this.togglePlaying}/>
+            togglePlaying={this.togglePlaying}
+          />
         </Navbar>
         <Switch>
           <Route path="/" exact>
@@ -229,6 +273,7 @@ class App extends React.Component {
                 selectPickedAction={this.selectPickedAction}
                 selectAction={this.selectAction.bind(this)}
                 viewer={this.viewer}
+                viewerId={this.props.viewerId}
               />
             )}
           </Route>
@@ -239,8 +284,8 @@ class App extends React.Component {
 }
 
 App.defaultProps = {
-  backendUrl: "http://localhost:5000/",
-  viewerId: "cartpole",
+  backendUrl: 'http://localhost:5000/',
+  viewerId: 'atari',
 };
 
 export default App;
