@@ -9,9 +9,14 @@ import {BrowserRouter as Router, Link, Route, Switch} from "react-router-dom";
 import {CartPoleViewer} from "./viewer/cartpole";
 import RolloutPage from "./RolloutPage";
 import AttributationPage from "./AttributationPage";
+import {AtariViewer} from "./viewer/atari";
+import Spinner from "react-bootstrap/Spinner";
+import {NoneViewer} from "./viewer/none";
 
 const VIEWER_REGISTRY = {
+  "none": NoneViewer,
   "cartpole": CartPoleViewer,
+  "atari": AtariViewer,
 };
 
 class App extends React.Component {
@@ -30,6 +35,7 @@ class App extends React.Component {
       playing: null,
       filterPhrase: "",
       selectedAction: null,
+      fetchesInProgress: 0,
     };
     this.viewer = new VIEWER_REGISTRY[this.props.viewerId]();
   }
@@ -42,32 +48,47 @@ class App extends React.Component {
     return this.props.backendUrl + parts.map(elem => _.toString(elem)).join("/");
   }
 
+  withLoading(promise) {
+    this.setState((prevState) => ({
+      fetchesInProgress: prevState.fetchesInProgress + 1,
+    }), () =>
+      promise()
+        .then(() => this.setState((prevState) => ({
+          fetchesInProgress: prevState.fetchesInProgress - 1,
+        })))
+    );
+  }
+
   fetchTrajectoriesList() {
-    fetch(this.getEndpointUrl("rollout"))
-      .then(response => response.json())
-      .then(data => this.setState({
-        title: data["title"],
-        description: data["description"],
-        env: data["env"],
-        recordedAt: data["recorded_at"],
-        trajectories: data["trajectories"],
-      }))
-      .then(() => this.fetchTrajectory(0));
+    this.withLoading(() =>
+      fetch(this.getEndpointUrl("rollout"))
+        .then(response => response.json())
+        .then(data => this.setState({
+          title: data["title"],
+          description: data["description"],
+          env: data["env"],
+          recordedAt: data["recorded_at"],
+          trajectories: data["trajectories"],
+        }))
+        .then(() => this.fetchTrajectory(0))
+    )
   }
 
   fetchTrajectory(trajectoryIndex) {
-    fetch(this.getEndpointUrl("rollout", "trajectory", trajectoryIndex))
-      .then(response => response.json())
-      .then(data => this.setState({
-        currentTrajectoryIndex: trajectoryIndex,
-        currentTrajectory: {
-          title: data["title"],
-          description: data["description"],
-          hotspots: data["hotspots"],
-          timesteps: data["timesteps"],
-        }
-      }))
-      .then(() => this.rewindTo(0));
+    this.withLoading(() =>
+      fetch(this.getEndpointUrl("rollout", "trajectory", trajectoryIndex))
+        .then(response => response.json())
+        .then(data => this.setState({
+          currentTrajectoryIndex: trajectoryIndex,
+          currentTrajectory: {
+            title: data["title"],
+            description: data["description"],
+            hotspots: data["hotspots"],
+            timesteps: data["timesteps"],
+          }
+        }))
+        .then(() => this.rewindTo(0))
+    )
   }
 
   isTrajectoryLoaded() {
@@ -76,6 +97,10 @@ class App extends React.Component {
 
   isTimestepLoaded() {
     return this.state.currentTimestep !== null;
+  }
+
+  isFetchInProgress() {
+    return this.state.fetchesInProgress > 0;
   }
 
   isPlaying() {
@@ -182,6 +207,11 @@ class App extends React.Component {
   render() {
     return (
       <Router>
+        {this.isFetchInProgress() && (
+          <div className="loader">
+            <Spinner animation="grow" variant="primary" />
+          </div>
+        )}
         <Navbar bg="light" expand="lg" sticky="top">
           <Navbar.Brand href="/">rld</Navbar.Brand>
           <Navbar.Toggle aria-controls="main-nav"/>
@@ -229,6 +259,7 @@ class App extends React.Component {
                 selectPickedAction={this.selectPickedAction}
                 selectAction={this.selectAction.bind(this)}
                 viewer={this.viewer}
+                viewerId={this.props.viewerId}
               />
             )}
           </Route>
@@ -240,7 +271,7 @@ class App extends React.Component {
 
 App.defaultProps = {
   backendUrl: "http://localhost:5000/",
-  viewerId: "cartpole",
+  viewerId: "atari",
 };
 
 export default App;

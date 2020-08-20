@@ -19,14 +19,6 @@ class TabularAttributationViewer extends React.Component {
   }
 
   render() {
-    if (this.props.currentTimestep === null) {
-      return (
-        <Container fluid>
-          <p>No timestep loaded.</p>
-        </Container>
-      );
-    }
-
     return (
       <Container fluid>
         <Row>
@@ -71,9 +63,9 @@ class TabularAttributationViewer extends React.Component {
   }
 }
 
-TabularAttributationViewer.defaultProps = {
-  currentTimestep: null,
-  selectedAction: null,
+  TabularAttributationViewer.defaultProps = {
+    currentTimestep: null,
+    selectedAction: null,
   filterPhrase: "",
   filterComponents: null,
 };

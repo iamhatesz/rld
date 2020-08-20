@@ -1,8 +1,12 @@
 import * as THREE from "three";
 import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
+import _ from "lodash";
+import ImageEncoder from "../utils/imageEncoder";
+import {flattenStackedPixel, identityPixelColor} from "../utils/math";
+
 
 function floatColorToIntColor(value) {
-    return Math.floor(value.clamp(0, 1) * 255);
+    return Math.floor(_.clamp(value, 0, 1) * 255);
 }
 
 function attributationColor(value, max) {
@@ -40,11 +44,13 @@ class ImageViewer extends Viewer {
   /**
    * This Viewer expects observation to be a float array of shape CxHxW, where each value is in range [0; 1].
    */
-  constructor(width, height, obsWidth, obsHeight) {
+  constructor(obsWidth, obsHeight) {
     super();
 
-    this.width = width;
-    this.height = height;
+    // These are just initial dummy values
+    // - the real numbers will be set on the first call to resize()
+    this.width = 100;
+    this.height = 100;
 
     this.obsWidth = obsWidth;
     this.obsHeight = obsHeight;
@@ -55,70 +61,29 @@ class ImageViewer extends Viewer {
     this.obsImage.setAttribute("width", this.width);
     this.obsImage.setAttribute("height", this.height);
 
-    this.attrImage = document.createElement("img");
-    this.attrImage.setAttribute("class", "attr-image");
-    this.attrImage.setAttribute("alt", "Attributation");
-    this.attrImage.setAttribute("width", this.width);
-    this.attrImage.setAttribute("height", this.height);
-
-    this.container = document.createElement("div")
-    this.container.setAttribute("class", "image-container");
-    this.container.append(this.obsImage)
-    this.container.append(this.attrImage)
-
-    this.canvas = document.createElement("canvas");
-    this.canvas.setAttribute("width", this.obsWidth);
-    this.canvas.setAttribute("height", this.obsHeight);
-    this.ctx = this.canvas.getContext("2d");
-    this.buffer = new Uint8ClampedArray(this.obsWidth * this.obsHeight * 4);
-    this.imageData = new ImageData(this.buffer, this.obsWidth, this.obsHeight);
+    this.encoder = new ImageEncoder(
+      this.obsWidth,
+      this.obsHeight,
+      (stackedPixel) => identityPixelColor(
+        flattenStackedPixel(stackedPixel)
+      )
+    );
   }
 
   domElement() {
-    return this.container;
+    return this.obsImage;
+  }
+
+  resize(width, height) {
+    this.width = width;
+    this.height = height;
+    this.obsImage.setAttribute("width", this.width);
+    this.obsImage.setAttribute("height", this.height);
   }
 
   update(timestep) {
-    const obs = timestep["obs"];
-    this.obsImage.setAttribute("src", this.encodedObs(obs));
-
-    const attr = timestep["attributations"]["data"];
-    this.attrImage.setAttribute("src", this.encodedAttr(attr));
-  }
-
-  encodedObs(obs) {
-    for (let y = 0; y < this.obsHeight; y++) {
-      for (let x = 0; x < this.obsWidth; x++) {
-        const pos = (y * this.obsWidth + x) * 4;
-        this.buffer[pos] = floatColorToIntColor(obs[x][y][0]);
-        this.buffer[pos + 1] = floatColorToIntColor(obs[x][y][0]);
-        this.buffer[pos + 2] = floatColorToIntColor(obs[x][y][0]);
-        this.buffer[pos + 3] = 255;
-      }
-    }
-
-    this.imageData.data.set(this.buffer);
-    this.ctx.putImageData(this.imageData, 0, 0);
-    return this.canvas.toDataURL();
-  }
-
-  encodedAttr(attr) {
-    for (let y = 0; y < this.obsHeight; y++) {
-      for (let x = 0; x < this.obsWidth; x++) {
-        const pos = (y * this.obsWidth + x) * 4;
-        const [h, s, l] = attributationColor(attr[x][y], 0.001);
-        const pixelColor = new THREE.Color().setHSL(h, s, l);
-
-        this.buffer[pos] = floatColorToIntColor(pixelColor.r);
-        this.buffer[pos + 1] = floatColorToIntColor(pixelColor.g);
-        this.buffer[pos + 2] = floatColorToIntColor(pixelColor.b);
-        this.buffer[pos + 3] = 255;
-      }
-    }
-
-    this.imageData.data.set(this.buffer);
-    this.ctx.putImageData(this.imageData, 0, 0);
-    return this.canvas.toDataURL();
+    const obs = timestep.obs;
+    this.obsImage.setAttribute("src", this.encoder.encode(obs));
   }
 }
 

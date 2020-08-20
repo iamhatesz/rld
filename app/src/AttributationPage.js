@@ -5,18 +5,38 @@ import TabularAttributationViewer from "./TabularAttributationViewer";
 import Container from "react-bootstrap/Container";
 import ActionPicker from "./ActionPicker";
 import Viewer from "./Viewer";
+import ImageAttributationViewer from "./ImageAttributationViewer";
 
 class AttributationPage extends React.Component {
   render() {
+    let attributationViewer = null;
+    if (this.props.viewerId === "none") {
+      attributationViewer = (
+        <p>No viewer defined.</p>
+      );
+    } else if (this.props.viewerId === "cartpole") {
+      attributationViewer = (
+        <TabularAttributationViewer
+          currentTimestep={this.props.currentTimestep}
+          selectedAction={this.props.selectedAction}
+          filterPhrase={this.props.filterPhrase}
+          filterComponents={this.props.filterComponents.bind(this)}
+        />
+      );
+    } else if (this.props.viewerId === "atari") {
+      attributationViewer = (
+        <ImageAttributationViewer
+          currentTimestep={this.props.currentTimestep}
+          selectedAction={this.props.selectedAction}
+        />
+      );
+    }
+
     return (
       <Container fluid>
         <Row>
           <Col>
-            <TabularAttributationViewer
-              currentTimestep={this.props.currentTimestep}
-              selectedAction={this.props.selectedAction}
-              filterPhrase={this.props.filterPhrase}
-              filterComponents={this.props.filterComponents.bind(this)} />
+            {attributationViewer}
           </Col>
           <Col xs="2" className="bg-light">
             <Container fluid>
@@ -51,6 +71,7 @@ AttributationPage.defaultProps = {
   selectPickedAction: null,
   selectAction: null,
   viewer: null,
+  viewerId: "none",
 };
 
 export default AttributationPage;

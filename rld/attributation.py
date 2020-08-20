@@ -42,12 +42,12 @@ class AttributationNormalizer:
         self,
         obs_space: gym.Space,
         obs_image_channel_dim: Optional[int],
-        sign: AttributationNormalizationMode,
+        mode: AttributationNormalizationMode,
         outlier_percentile: Union[int, float],
     ):
         self.obs_space = obs_space
         self.obs_image_channel_dim = obs_image_channel_dim
-        self.sign = sign
+        self.mode = mode
         self.outlier_percentile = outlier_percentile
 
     def transform(self, attr: AttributationLike) -> AttributationLike:
@@ -56,19 +56,19 @@ class AttributationNormalizer:
             attr = np.sum(attr, axis=self.obs_image_channel_dim)
             obs_space = remove_channel_dim_from_image_space(obs_space)
         attr = flatten(self.obs_space, attr)
-        if self.sign == AttributationNormalizationMode.ALL:
+        if self.mode == AttributationNormalizationMode.ALL:
             scaling_factor = self._calculate_safe_scaling_factor(np.abs(attr))
-        elif self.sign == AttributationNormalizationMode.POSITIVE:
+        elif self.mode == AttributationNormalizationMode.POSITIVE:
             attr = (attr > 0) * attr
             scaling_factor = self._calculate_safe_scaling_factor(attr)
-        elif self.sign == AttributationNormalizationMode.NEGATIVE:
+        elif self.mode == AttributationNormalizationMode.NEGATIVE:
             attr = (attr < 0) * attr
             scaling_factor = -self._calculate_safe_scaling_factor(np.abs(attr))
-        elif self.sign == AttributationNormalizationMode.ABSOLUTE_VALUE:
+        elif self.mode == AttributationNormalizationMode.ABSOLUTE_VALUE:
             attr = np.abs(attr)
             scaling_factor = self._calculate_safe_scaling_factor(attr)
         else:
-            raise EnumValueNotFound(self.sign, AttributationNormalizationMode)
+            raise EnumValueNotFound(self.mode, AttributationNormalizationMode)
         attr_norm = self._scale(attr, scaling_factor)
         return unflatten(obs_space, attr_norm)
 
