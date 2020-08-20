@@ -8,8 +8,7 @@ import './ActionPicker.css';
 
 class ActionPicker extends React.Component {
   render() {
-    const pickedAction = this.props.currentTimestep.attributations.picked;
-    const topActions = this.props.currentTimestep.attributations.top;
+    const {attributations: {picked: pickedAction, top: topActions}} = this.props.currentTimestep;
 
     return (
       <Container fluid>
