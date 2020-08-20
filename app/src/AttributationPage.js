@@ -1,20 +1,18 @@
 import React from 'react';
-import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
-import TabularAttributationViewer from "./TabularAttributationViewer";
-import Container from "react-bootstrap/Container";
-import ActionPicker from "./ActionPicker";
-import Viewer from "./Viewer";
-import ImageAttributationViewer from "./ImageAttributationViewer";
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+import TabularAttributationViewer from './TabularAttributationViewer';
+import Container from 'react-bootstrap/Container';
+import ActionPicker from './ActionPicker';
+import Viewer from './Viewer';
+import ImageAttributationViewer from './ImageAttributationViewer';
 
 class AttributationPage extends React.Component {
   render() {
     let attributationViewer = null;
-    if (this.props.viewerId === "none") {
-      attributationViewer = (
-        <p>No viewer defined.</p>
-      );
-    } else if (this.props.viewerId === "cartpole") {
+    if (this.props.viewerId === 'none') {
+      attributationViewer = <p>No viewer defined.</p>;
+    } else if (this.props.viewerId === 'cartpole') {
       attributationViewer = (
         <TabularAttributationViewer
           currentTimestep={this.props.currentTimestep}
@@ -23,7 +21,7 @@ class AttributationPage extends React.Component {
           filterComponents={this.props.filterComponents.bind(this)}
         />
       );
-    } else if (this.props.viewerId === "atari") {
+    } else if (this.props.viewerId === 'atari') {
       attributationViewer = (
         <ImageAttributationViewer
           currentTimestep={this.props.currentTimestep}
@@ -35,9 +33,7 @@ class AttributationPage extends React.Component {
     return (
       <Container fluid>
         <Row>
-          <Col>
-            {attributationViewer}
-          </Col>
+          <Col>{attributationViewer}</Col>
           <Col xs="2" className="bg-light">
             <Container fluid>
               <Row>
@@ -46,7 +42,8 @@ class AttributationPage extends React.Component {
                   selectedAction={this.props.selectedAction}
                   selectPickedAction={this.props.selectPickedAction}
                   selectAction={this.props.selectAction}
-                  stringifyAction={this.props.viewer.stringifyAction} />
+                  stringifyAction={this.props.viewer.stringifyAction}
+                />
               </Row>
               <Row>
                 <Viewer
@@ -66,12 +63,12 @@ class AttributationPage extends React.Component {
 AttributationPage.defaultProps = {
   currentTimestep: null,
   selectedAction: null,
-  filterPhrase: "",
+  filterPhrase: '',
   filterComponents: null,
   selectPickedAction: null,
   selectAction: null,
   viewer: null,
-  viewerId: "none",
+  viewerId: 'none',
 };
 
 export default AttributationPage;

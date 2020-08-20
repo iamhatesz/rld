@@ -4,10 +4,10 @@ class ImageEncoder {
     this.height = height;
     this.pixelToColor = pixelToColor;
 
-    this.canvas = document.createElement("canvas");
-    this.canvas.setAttribute("width", this.width);
-    this.canvas.setAttribute("height", this.height);
-    this.ctx = this.canvas.getContext("2d");
+    this.canvas = document.createElement('canvas');
+    this.canvas.setAttribute('width', this.width);
+    this.canvas.setAttribute('height', this.height);
+    this.ctx = this.canvas.getContext('2d');
     this.buffer = new Uint8ClampedArray(this.width * this.height * 4);
     this.imageData = new ImageData(this.buffer, this.width, this.height);
   }

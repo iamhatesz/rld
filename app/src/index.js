@@ -3,14 +3,12 @@ import ReactDOM from 'react-dom';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
 
-const rootElement = document.getElementById("root");
-const viewerId = rootElement.getAttribute("data-viewer");
+const rootElement = document.getElementById('root');
+const viewerId = rootElement.getAttribute('data-viewer');
 
 ReactDOM.render(
   <React.StrictMode>
-    <App
-      viewerId={viewerId.startsWith("{") ? "none" : viewerId}
-    />
+    <App viewerId={viewerId.startsWith('{') ? 'none' : viewerId} />
   </React.StrictMode>,
   rootElement
 );

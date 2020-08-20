@@ -1,5 +1,5 @@
-import * as THREE from "three";
-import {WebGLViewer} from "./base";
+import * as THREE from 'three';
+import { WebGLViewer } from './base';
 
 class CartPoleViewer extends WebGLViewer {
   // TODO Make these values compliant with the original CartPole dimensions
@@ -14,16 +14,24 @@ class CartPoleViewer extends WebGLViewer {
     super();
 
     this.cart = new THREE.Mesh(
-      new THREE.BoxGeometry(CartPoleViewer.CART_LENGTH, CartPoleViewer.CART_HEIGHT, CartPoleViewer.CART_WIDTH),
+      new THREE.BoxGeometry(
+        CartPoleViewer.CART_LENGTH,
+        CartPoleViewer.CART_HEIGHT,
+        CartPoleViewer.CART_WIDTH
+      ),
       new THREE.MeshStandardMaterial({
-        color: 0xffffff
+        color: 0xffffff,
       })
     );
 
     const realPole = new THREE.Mesh(
-      new THREE.BoxGeometry(CartPoleViewer.POLE_LENGTH, CartPoleViewer.POLE_HEIGHT, CartPoleViewer.POLE_WIDTH),
+      new THREE.BoxGeometry(
+        CartPoleViewer.POLE_LENGTH,
+        CartPoleViewer.POLE_HEIGHT,
+        CartPoleViewer.POLE_WIDTH
+      ),
       new THREE.MeshStandardMaterial({
-        color: 0xffffff
+        color: 0xffffff,
       })
     );
     realPole.position.set(0, CartPoleViewer.POLE_HEIGHT / 2, 0);
@@ -34,10 +42,10 @@ class CartPoleViewer extends WebGLViewer {
     this.axle = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(-20, 0, 0),
-        new THREE.Vector3(20, 0, 0)
+        new THREE.Vector3(20, 0, 0),
       ]),
       new THREE.LineBasicMaterial({
-        color: 0xffffff
+        color: 0xffffff,
       })
     );
 
@@ -47,7 +55,7 @@ class CartPoleViewer extends WebGLViewer {
   }
 
   update(timestep) {
-    const obs = timestep["obs"];
+    const obs = timestep['obs'];
     const cartPosition = obs[0];
     const poleAngle = obs[2];
 
@@ -70,11 +78,11 @@ class CartPoleViewer extends WebGLViewer {
 
   stringifyAction(action) {
     if (action === 0) {
-      return "LEFT";
+      return 'LEFT';
     } else {
-      return "RIGHT";
+      return 'RIGHT';
     }
   }
 }
 
-export {CartPoleViewer};
+export { CartPoleViewer };

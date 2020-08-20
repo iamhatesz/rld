@@ -1,10 +1,10 @@
 import React from 'react';
-import Container from "react-bootstrap/Container";
-import Row from "react-bootstrap/Row";
-import Form from "react-bootstrap/Form";
-import Table from "react-bootstrap/Table";
-import flatten from "keypather/flatten";
-import _ from "lodash";
+import Container from 'react-bootstrap/Container';
+import Row from 'react-bootstrap/Row';
+import Form from 'react-bootstrap/Form';
+import Table from 'react-bootstrap/Table';
+import flatten from 'keypather/flatten';
+import _ from 'lodash';
 
 class TabularAttributationViewer extends React.Component {
   timestepFeatures() {
@@ -13,9 +13,9 @@ class TabularAttributationViewer extends React.Component {
     const raw_attr = this.props.selectedAction.raw;
     const norm_attr = this.props.selectedAction.normalized;
     const labels = Object.entries(flatten(obs)).map((value) => _.first(value));
-    return _
-      .zip(labels, obs, raw_attr, norm_attr)
-      .filter(([label, ...rest]) => label.includes(this.props.filterPhrase));
+    return _.zip(labels, obs, raw_attr, norm_attr).filter(([label, ...rest]) =>
+      label.includes(this.props.filterPhrase)
+    );
   }
 
   render() {
@@ -29,7 +29,8 @@ class TabularAttributationViewer extends React.Component {
               onChange={this.props.filterComponents}
               placeholder="Filter components..."
               size="sm"
-              className="full-width"/>
+              className="full-width"
+            />
           </Form>
         </Row>
         <Row>
@@ -45,16 +46,18 @@ class TabularAttributationViewer extends React.Component {
               </tr>
             </thead>
             <tbody>
-            {this.timestepFeatures().map(([label, obs, raw_attr, norm_attr]) =>
-              <tr key={label}>
-                <td>{label}</td>
-                <td>n/a</td>
-                <td>{obs.toFixed(4)}</td>
-                <td>n/a</td>
-                <td>{raw_attr.toFixed(6)}</td>
-                <td>{norm_attr.toFixed(2)}</td>
-              </tr>
-            )}
+              {this.timestepFeatures().map(
+                ([label, obs, raw_attr, norm_attr]) => (
+                  <tr key={label}>
+                    <td>{label}</td>
+                    <td>n/a</td>
+                    <td>{obs.toFixed(4)}</td>
+                    <td>n/a</td>
+                    <td>{raw_attr.toFixed(6)}</td>
+                    <td>{norm_attr.toFixed(2)}</td>
+                  </tr>
+                )
+              )}
             </tbody>
           </Table>
         </Row>
@@ -63,10 +66,10 @@ class TabularAttributationViewer extends React.Component {
   }
 }
 
-  TabularAttributationViewer.defaultProps = {
-    currentTimestep: null,
-    selectedAction: null,
-  filterPhrase: "",
+TabularAttributationViewer.defaultProps = {
+  currentTimestep: null,
+  selectedAction: null,
+  filterPhrase: '',
   filterComponents: null,
 };
 

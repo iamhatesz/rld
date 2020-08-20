@@ -1,11 +1,11 @@
-import {Viewer} from "./base";
+import { Viewer } from './base';
 
 class NoneViewer extends Viewer {
   constructor() {
     super();
 
-    this.p = document.createElement("p");
-    this.p.innerText = "No viewer defined.";
+    this.p = document.createElement('p');
+    this.p.innerText = 'No viewer defined.';
   }
 
   domElement() {
@@ -21,4 +21,4 @@ class NoneViewer extends Viewer {
   }
 }
 
-export {NoneViewer};
+export { NoneViewer };

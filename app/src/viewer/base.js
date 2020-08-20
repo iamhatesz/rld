@@ -1,38 +1,39 @@
-import * as THREE from "three";
-import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
-import _ from "lodash";
-import ImageEncoder from "../utils/imageEncoder";
-import {flattenStackedPixel, identityPixelColor} from "../utils/math";
-
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import _ from 'lodash';
+import ImageEncoder from '../utils/imageEncoder';
+import { flattenStackedPixel, identityPixelColor } from '../utils/math';
 
 function floatColorToIntColor(value) {
-    return Math.floor(_.clamp(value, 0, 1) * 255);
+  return Math.floor(_.clamp(value, 0, 1) * 255);
 }
 
 function attributationColor(value, max) {
-    const saturation = 1.0;
-    const lightnessAtMin = 0.35;
-    const lightnessAtMax = 1.0;
-    const huePositive = 0.3;
-    const hueNegative = 1.0;
+  const saturation = 1.0;
+  const lightnessAtMin = 0.35;
+  const lightnessAtMax = 1.0;
+  const huePositive = 0.3;
+  const hueNegative = 1.0;
 
-    const lightness = (lightnessAtMin + (1.0 - Math.abs(value)) * (lightnessAtMax - lightnessAtMin));
-    const hue = value > 0 ? huePositive : hueNegative;
+  const lightness =
+    lightnessAtMin +
+    (1.0 - Math.abs(value)) * (lightnessAtMax - lightnessAtMin);
+  const hue = value > 0 ? huePositive : hueNegative;
 
-    return [hue, saturation, lightness];
+  return [hue, saturation, lightness];
 }
 
 class Viewer {
   domElement() {
-    throw new Error("Not implemented");
+    throw new Error('Not implemented');
   }
 
   resize(width, height) {
-    throw new Error("Not implemented");
+    throw new Error('Not implemented');
   }
 
   update(timestep) {
-    console.warn("Calling update() method, which is not implemented.");
+    console.warn('Calling update() method, which is not implemented.');
   }
 
   stringifyAction(action) {
@@ -55,18 +56,16 @@ class ImageViewer extends Viewer {
     this.obsWidth = obsWidth;
     this.obsHeight = obsHeight;
 
-    this.obsImage = document.createElement("img");
-    this.obsImage.setAttribute("class", "obs-image");
-    this.obsImage.setAttribute("alt", "Observation");
-    this.obsImage.setAttribute("width", this.width);
-    this.obsImage.setAttribute("height", this.height);
+    this.obsImage = document.createElement('img');
+    this.obsImage.setAttribute('class', 'obs-image');
+    this.obsImage.setAttribute('alt', 'Observation');
+    this.obsImage.setAttribute('width', this.width);
+    this.obsImage.setAttribute('height', this.height);
 
     this.encoder = new ImageEncoder(
       this.obsWidth,
       this.obsHeight,
-      (stackedPixel) => identityPixelColor(
-        flattenStackedPixel(stackedPixel)
-      )
+      (stackedPixel) => identityPixelColor(flattenStackedPixel(stackedPixel))
     );
   }
 
@@ -77,13 +76,13 @@ class ImageViewer extends Viewer {
   resize(width, height) {
     this.width = width;
     this.height = height;
-    this.obsImage.setAttribute("width", this.width);
-    this.obsImage.setAttribute("height", this.height);
+    this.obsImage.setAttribute('width', this.width);
+    this.obsImage.setAttribute('height', this.height);
   }
 
   update(timestep) {
     const obs = timestep.obs;
-    this.obsImage.setAttribute("src", this.encoder.encode(obs));
+    this.obsImage.setAttribute('src', this.encoder.encode(obs));
   }
 }
 
@@ -95,10 +94,15 @@ class WebGLViewer extends Viewer {
     this.height = 400;
 
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
+    this.camera = new THREE.PerspectiveCamera(
+      75,
+      this.width / this.height,
+      0.1,
+      1000
+    );
 
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true
+      antialias: true,
     });
     this.renderer.setSize(this.width, this.height);
 
@@ -107,7 +111,9 @@ class WebGLViewer extends Viewer {
     this.scene.add(this.light);
 
     this.controls = new OrbitControls(this.camera, this.domElement());
-    this.controls.object.position.fromArray(this.cameraInitialPosition().toArray());
+    this.controls.object.position.fromArray(
+      this.cameraInitialPosition().toArray()
+    );
     this.controls.target = this.centerOfScene();
 
     this.animate();
@@ -144,4 +150,4 @@ class WebGLViewer extends Viewer {
   }
 }
 
-export {Viewer, ImageViewer, WebGLViewer};
+export { Viewer, ImageViewer, WebGLViewer };

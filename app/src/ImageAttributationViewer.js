@@ -1,9 +1,13 @@
 import React from 'react';
-import Container from "react-bootstrap/Container";
-import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
-import ImageEncoder from "./utils/imageEncoder";
-import {attributationPixelColor, flattenStackedPixel, identityPixelColor} from "./utils/math";
+import Container from 'react-bootstrap/Container';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+import ImageEncoder from './utils/imageEncoder';
+import {
+  attributationPixelColor,
+  flattenStackedPixel,
+  identityPixelColor,
+} from './utils/math';
 
 class ImageAttributationViewer extends React.Component {
   constructor(props) {
@@ -12,9 +16,7 @@ class ImageAttributationViewer extends React.Component {
     this.obsEncoder = new ImageEncoder(
       this.props.obsWidth,
       this.props.obsHeight,
-      (stackedPixel) => identityPixelColor(
-        flattenStackedPixel(stackedPixel)
-      )
+      (stackedPixel) => identityPixelColor(flattenStackedPixel(stackedPixel))
     );
     this.attrEncoder = new ImageEncoder(
       this.props.obsWidth,

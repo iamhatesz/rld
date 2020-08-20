@@ -11,7 +11,10 @@ class Viewer extends React.Component {
     if (this.isFullMode()) {
       this.props.viewer.resize(600, 400);
     } else {
-      this.props.viewer.resize(this.sceneRef.current.offsetWidth, this.sceneRef.current.offsetHeight);
+      this.props.viewer.resize(
+        this.sceneRef.current.offsetWidth,
+        this.sceneRef.current.offsetHeight
+      );
     }
     this.sceneRef.current.appendChild(this.props.viewer.domElement());
   }
@@ -21,24 +24,26 @@ class Viewer extends React.Component {
   }
 
   isFullMode() {
-    return this.props.mode === "full";
+    return this.props.mode === 'full';
   }
 
   render() {
     return (
-      <div className={`viewer ${this.isFullMode() ? "viewer-full" : "viewer-side"}`}>
+      <div
+        className={`viewer ${
+          this.isFullMode() ? 'viewer-full' : 'viewer-side'
+        }`}
+      >
         <div className="viewer-scene" ref={this.sceneRef}>
-            {this.isFullMode() && (
-              <>
-                <div className="viewer-action">
-                  {this.props.viewer.stringifyAction(this.props.timestep.action)}
-                </div>
-                <div className="viewer-reward">
-                  {this.props.timestep.reward}
-                </div>
-              </>
-            )}
-          </div>
+          {this.isFullMode() && (
+            <>
+              <div className="viewer-action">
+                {this.props.viewer.stringifyAction(this.props.timestep.action)}
+              </div>
+              <div className="viewer-reward">{this.props.timestep.reward}</div>
+            </>
+          )}
+        </div>
       </div>
     );
   }
@@ -47,7 +52,7 @@ class Viewer extends React.Component {
 Viewer.defaultProps = {
   viewer: null,
   timestep: null,
-  mode: "full", // Available modes: "full" and "side"
+  mode: 'full', // Available modes: "full" and "side"
 };
 
 export default Viewer;
