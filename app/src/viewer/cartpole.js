@@ -83,6 +83,43 @@ class CartPoleViewer extends WebGLViewer {
       return 'RIGHT';
     }
   }
+
+  iterate(obs, attr) {
+    return [
+      {
+        label: 'cart position',
+        rawValue: obs[0],
+        realValue: obs[0],
+        realValueUnit: 'm',
+        rawAttributation: attr.raw[0],
+        normalizedAttributation: attr.normalized[0],
+      },
+      {
+        label: 'cart velocity',
+        rawValue: obs[1],
+        realValue: obs[1],
+        realValueUnit: 'm/s',
+        rawAttributation: attr.raw[1],
+        normalizedAttributation: attr.normalized[1],
+      },
+      {
+        label: 'pole angle',
+        rawValue: obs[2],
+        realValue: obs[2],
+        realValueUnit: 'rad',
+        rawAttributation: attr.raw[2],
+        normalizedAttributation: attr.normalized[2],
+      },
+      {
+        label: 'pole angular velocity',
+        rawValue: obs[3],
+        realValue: obs[3],
+        realValueUnit: 'rad/s',
+        rawAttributation: attr.raw[3],
+        normalizedAttributation: attr.normalized[3],
+      },
+    ];
+  }
 }
 
 export { CartPoleViewer };

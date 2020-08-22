@@ -8,6 +8,10 @@ class Viewer {
     throw new Error('Not implemented');
   }
 
+  attributationViewerType() {
+    throw new Error('Not implemented');
+  }
+
   resize(width, height) {
     throw new Error('Not implemented');
   }
@@ -18,6 +22,10 @@ class Viewer {
 
   stringifyAction(action) {
     return JSON.stringify(action);
+  }
+
+  iterate(obs, attr) {
+    throw new Error('Not implemented');
   }
 }
 
@@ -53,6 +61,10 @@ class ImageViewer extends Viewer {
     return this.obsImage;
   }
 
+  attributationViewerType() {
+    return "image";
+  }
+
   resize(width, height) {
     this.width = width;
     this.height = height;
@@ -63,6 +75,25 @@ class ImageViewer extends Viewer {
   update(timestep) {
     const obs = timestep.obs;
     this.obsImage.setAttribute('src', this.encoder.encode(obs));
+  }
+
+  iterate(obs, attr) {
+    const arr = []
+    for (let y = 0; y < this.obsHeight; y++) {
+      for (let x = 0; x < this.obsWidth; x++) {
+        for (let c = 0; c < 4; c++) {
+          arr.push({
+            label: `pixel at (${y}, ${x}, ${c})`,
+            rawValue: obs[y][x][c],
+            realValue: obs[y][x][c],
+            realValueUnit: '',
+            rawAttributation: attr.raw[y][x][c],
+            normalizedAttributation: attr.normalized[y][x],
+          });
+        }
+      }
+    }
+    return arr;
   }
 }
 
@@ -101,6 +132,10 @@ class WebGLViewer extends Viewer {
 
   domElement() {
     return this.renderer.domElement;
+  }
+
+  attributationViewerType() {
+    return "table";
   }
 
   resize(width, height) {

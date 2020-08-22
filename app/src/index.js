@@ -2,19 +2,28 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
-import _ from 'lodash';
 
 const rootElement = document.getElementById('root');
-const host = rootElement.getAttribute('data-host');
-const port = _.parseInt(rootElement.getAttribute('data-port'));
+
+let host = rootElement.getAttribute('data-host');
+if (host.startsWith('{')) {
+  host = 'localhost';
+}
+let port = rootElement.getAttribute('data-port');
+if (port.startsWith('{')) {
+  port = 5000;
+}
 const backendUrl = `http://${host}:${port}/`;
-const viewerId = rootElement.getAttribute('data-viewer');
+let viewerId = rootElement.getAttribute('data-viewer');
+if (viewerId.startsWith('{')) {
+  viewerId = 'none';
+}
 
 ReactDOM.render(
   <React.StrictMode>
     <App
       backendUrl={backendUrl}
-      viewerId={viewerId.startsWith('{') ? 'none' : viewerId}
+      viewerId={viewerId}
     />
   </React.StrictMode>,
   rootElement

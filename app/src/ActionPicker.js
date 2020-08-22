@@ -20,8 +20,8 @@ class ActionPicker extends React.Component {
           >
             <Dropdown.Header>Picked action</Dropdown.Header>
             <Dropdown.Item onClick={this.props.selectPickedAction}>
-              {this.props.stringifyAction(pickedAction.action)}(
-              {pickedAction.prob.toFixed(2)})
+              {this.props.stringifyAction(pickedAction.action)}&nbsp;
+              ({pickedAction.prob.toFixed(2)})
             </Dropdown.Item>
             <Dropdown.Divider />
             <Dropdown.Header>Top actions</Dropdown.Header>
@@ -41,7 +41,8 @@ class ActionPicker extends React.Component {
         </Row>
         <Row>
           <pre className="selected-action">
-            {this.props.stringifyAction(this.props.selectedAction.action)}
+            {this.props.stringifyAction(this.props.selectedAction.action)}&nbsp;
+            ({pickedAction.prob.toFixed(2)})
           </pre>
         </Row>
       </Container>

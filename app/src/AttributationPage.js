@@ -12,16 +12,17 @@ class AttributationPage extends React.Component {
     let attributationViewer = null;
     if (this.props.viewerId === 'none') {
       attributationViewer = <p>No viewer defined.</p>;
-    } else if (this.props.viewerId === 'cartpole') {
+    } else if (this.props.viewer.attributationViewerType() === 'table') {
       attributationViewer = (
         <TabularAttributationViewer
           currentTimestep={this.props.currentTimestep}
           selectedAction={this.props.selectedAction}
           filterPhrase={this.props.filterPhrase}
           filterComponents={this.props.filterComponents.bind(this)}
+          iterate={this.props.viewer.iterate}
         />
       );
-    } else if (this.props.viewerId === 'atari') {
+    } else if (this.props.viewer.attributationViewerType() === 'image') {
       attributationViewer = (
         <ImageAttributationViewer
           currentTimestep={this.props.currentTimestep}
