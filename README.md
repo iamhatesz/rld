@@ -1,4 +1,4 @@
-# rld
+# ![rld logo](https://imgur.com/XlDt5Hi.png)
 
 ![Build and test](https://github.com/iamhatesz/rld/workflows/Build%20and%20test/badge.svg)
 
