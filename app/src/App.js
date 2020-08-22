@@ -231,7 +231,7 @@ class App extends React.Component {
           <Navbar.Collapse id="main-nav">
             <Nav className="mr-auto">
               <Nav.Link as={Link} to="/">
-                Rollout
+                Viewer
               </Nav.Link>
               <Nav.Link as={Link} to="/attributation">
                 Attributation
