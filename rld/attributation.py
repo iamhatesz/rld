@@ -76,7 +76,7 @@ class AttributationNormalizer:
         sorted_vals = np.sort(attr.flatten())
         cum_sums = np.cumsum(sorted_vals)
         threshold_id = np.where(
-            cum_sums >= cum_sums[-1] * 0.01 * self.outlier_percentile
+            cum_sums >= cum_sums[-1] * 0.01 * (100 - self.outlier_percentile)
         )[0][0]
         return sorted_vals[threshold_id]
 

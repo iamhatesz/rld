@@ -32,6 +32,8 @@ Once the attributations are calculated, you can visualize them using:
 rld start --viewer <VIEWER_ID> <ROLLOUT>
 ```
 
+See the [examples](./examples) for reference.
+
 ## Description
 
 rld provides a set of tools to evaluate and understand behaviors of reinforcement
