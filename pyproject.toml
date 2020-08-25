@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rld"
-version = "0.1.0"
+version = "0.1.1"
 description = "A development tool for evaluation and interpretability of reinforcement learning agents."
 license = "MIT"
 authors = ["Tomasz Wrona <tomasz@wrona.me>"]
