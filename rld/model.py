@@ -2,7 +2,6 @@ from abc import ABC
 from collections import OrderedDict
 from typing import Any
 
-import gym
 import numpy as np
 import torch
 import torch.nn as nn
@@ -22,19 +21,19 @@ class Model(ABC, nn.Module):
     def output_device(self) -> torch.device:
         return self.input_device()
 
-    def action_space(self) -> gym.Space:
+    def action_space(self) -> Space:
         raise NotImplementedError
 
-    def obs_space(self) -> gym.Space:
+    def obs_space(self) -> Space:
         raise NotImplementedError
 
     def flatten_obs(self, obs: ObsLike) -> ObsLikeStrict:
-        if isinstance(self.obs_space(), gym.spaces.Box):
+        if isinstance(self.obs_space(), Box):
             return obs
         return flatten(self.obs_space(), obs)
 
     def unflatten_obs(self, obs: ObsLikeStrict) -> ObsLike:
-        if isinstance(self.obs_space(), gym.spaces.Box):
+        if isinstance(self.obs_space(), Box):
             return obs
         return unflatten(self.obs_space(), obs)
 
@@ -64,10 +63,10 @@ class RayModelWrapper(Model):
     def input_device(self) -> torch.device:
         return next(self.model.parameters()).device
 
-    def action_space(self) -> gym.Space:
+    def action_space(self) -> Space:
         return self.model.action_space
 
-    def obs_space(self) -> gym.Space:
+    def obs_space(self) -> Space:
         if hasattr(self.model.obs_space, "original_space"):
             return self.model.obs_space.original_space
         else:
