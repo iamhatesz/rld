@@ -89,12 +89,12 @@ def unpack_tensor(obs: ObsTensorStrict, space: Space) -> ObsTensorLike:
         return torch.tensor(obs).reshape(space.shape)
     elif isinstance(space, Dict):
         sizes = [_packed_size(s) for s in space.spaces.values()]
-        splitted_packed = torch.split(obs, sizes)
-        splitted_unpacked = [
+        split_packed = torch.split(obs, sizes)
+        split_unpacked = [
             (name, unpack_tensor(unpacked, s))
-            for unpacked, (name, s) in zip(splitted_packed, space.spaces.items())
+            for unpacked, (name, s) in zip(split_packed, space.spaces.items())
         ]
-        return OrderedDict(splitted_unpacked)
+        return OrderedDict(split_unpacked)
     else:
         raise SpaceNotSupported(space)
 
