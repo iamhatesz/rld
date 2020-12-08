@@ -1,14 +1,18 @@
 from abc import ABC
+from collections import OrderedDict
 from typing import Any
 
 import gym
+import numpy as np
 import torch
 import torch.nn as nn
-from gym.spaces import flatten, unflatten
+from gym import Space
+from gym.spaces import flatten, unflatten, Box, Dict
 from ray.rllib.models.modelv2 import ModelV2
 from ray.rllib.models.preprocessors import get_preprocessor
 
-from rld.typing import ObsLike, ObsLikeStrict
+from rld.exception import SpaceNotSupported
+from rld.typing import ObsLike, ObsLikeStrict, ObsTensorLike, ObsTensorStrict
 
 
 class Model(ABC, nn.Module):
@@ -68,3 +72,37 @@ class RayModelWrapper(Model):
             return self.model.obs_space.original_space
         else:
             return self.model.obs_space
+
+
+def pack_array(obs: ObsLike, space: Space) -> ObsLikeStrict:
+    if isinstance(space, Box):
+        return np.asarray(obs, dtype=np.float32).flatten()
+    elif isinstance(space, Dict):
+        packed_values = [pack_array(obs[name], s) for name, s in space.spaces.items()]
+        return np.concatenate(packed_values)
+    else:
+        raise SpaceNotSupported(space)
+
+
+def unpack_tensor(obs: ObsTensorStrict, space: Space) -> ObsTensorLike:
+    if isinstance(space, Box):
+        return torch.tensor(obs).reshape(space.shape)
+    elif isinstance(space, Dict):
+        sizes = [_packed_size(s) for s in space.spaces.values()]
+        splitted_packed = torch.split(obs, sizes)
+        splitted_unpacked = [
+            (name, unpack_tensor(unpacked, s))
+            for unpacked, (name, s) in zip(splitted_packed, space.spaces.items())
+        ]
+        return OrderedDict(splitted_unpacked)
+    else:
+        raise SpaceNotSupported(space)
+
+
+def _packed_size(space: Space) -> int:
+    if isinstance(space, Box):
+        return int(np.prod(space.shape))
+    elif isinstance(space, Dict):
+        return int(sum([_packed_size(s) for s in space.spaces]))
+    else:
+        raise SpaceNotSupported(space)

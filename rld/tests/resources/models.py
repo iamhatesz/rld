@@ -48,6 +48,27 @@ class BaseModel(Model, ObsMixin, ActionMixin, ABC):
         return torch.device("cpu")
 
 
+class BaseRecurrentModel(Model, ObsMixin, ActionMixin, ABC):
+    NUM_HIDDEN_NEURONS = 64
+
+    def __init__(self):
+        super().__init__()
+
+        self.hidden = self.init_hidden()
+        self.lstm = nn.LSTM(self.NUM_HIDDEN_NEURONS, self.NUM_HIDDEN_NEURONS)
+        self.head = self.init_head()
+
+    def forward(self, obs_flat: torch.Tensor) -> torch.Tensor:
+        obs = self.preprocess_obs(obs_flat)
+        x = F.relu(self.hidden(obs))
+
+        x = self.head(x)
+        return x
+
+    def input_device(self) -> torch.device:
+        return torch.device("cpu")
+
+
 class BoxObsMixin(ObsMixin):
     def init_hidden(self: BaseModel) -> nn.Module:
         return nn.Linear(self.obs_space().sample().size, self.NUM_HIDDEN_NEURONS)

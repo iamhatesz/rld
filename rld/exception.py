@@ -5,11 +5,24 @@ from typing import Any, Type
 import gym
 
 
+class SpaceNotSupported(Exception):
+    def __init__(self, space: gym.Space):
+        super().__init__(f"The space `{space}` is not currently supported.")
+
+
 class ActionSpaceNotSupported(Exception):
     def __init__(self, action_space: gym.Space):
         super().__init__(
             f"The action space `{action_space}` is not currently supported. The "
             f"currently supported action spaces are: Discrete, MultiDiscrete, Tuple."
+        )
+
+
+class ObsSpaceNotSupported(Exception):
+    def __init__(self, obs_space: gym.Space):
+        super().__init__(
+            f"The observation space `{obs_space}` is not currently supported. The "
+            f"currently supported observation spaces are: Box, Dict."
         )
 
 

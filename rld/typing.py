@@ -1,10 +1,12 @@
-from typing import Union, Mapping, Sequence, Callable
+from typing import Union, Sequence, Callable, Dict
 
 import numpy as np
 import torch
 
-ObsLike = Union[np.ndarray, Mapping[str, np.ndarray]]
+ObsLike = Union[np.ndarray, Dict[str, np.ndarray]]
 ObsLikeStrict = np.ndarray
+ObsTensorLike = Union[torch.Tensor, Dict[str, torch.Tensor]]
+ObsTensorStrict = torch.Tensor
 ObsBatchLike = Sequence[ObsLike]
 ObsBatchLikeStrict = Sequence[np.ndarray]
 
@@ -18,10 +20,10 @@ DoneLike = bool
 DoneBatchLike = Sequence[DoneLike]
 
 InfoValueLike = Union[str, int, float, bool, np.ndarray]
-InfoLike = Mapping[str, InfoValueLike]
+InfoLike = Dict[str, InfoValueLike]
 InfoBatchLike = Sequence[InfoLike]
 
-AttributationLike = Union[np.ndarray, Mapping[str, np.ndarray]]
+AttributationLike = Union[np.ndarray, Dict[str, np.ndarray]]
 AttributationLikeStrict = torch.Tensor
 AttributationBatchLike = Sequence[AttributationLike]
 
