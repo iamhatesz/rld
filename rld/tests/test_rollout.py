@@ -67,6 +67,7 @@ class TestRolloutReader(unittest.TestCase):
                             "framework": "torch",
                             "train_batch_size": 128,
                             "rollout_fragment_length": 128,
+                            "create_env_on_driver": True,
                         }
                     )
                     with tempfile.TemporaryDirectory() as temp_dir:
