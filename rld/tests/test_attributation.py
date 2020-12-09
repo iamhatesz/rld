@@ -1,3 +1,4 @@
+import itertools
 import unittest
 
 import gym
@@ -53,7 +54,7 @@ class TestAttributation(unittest.TestCase):
                 self.assertTrue(timestep.attributations.is_complied(obs_space))
 
     def test_model(self):
-        for env_fn, model_fn in zip(ALL_ENVS, ALL_MODELS):
+        for env_fn, model_fn in zip(itertools.cycle(ALL_ENVS), ALL_MODELS):
             with self.subTest(env=env_fn, model=model_fn):
                 env = env_fn()
                 model = model_fn()

@@ -1,4 +1,4 @@
-from typing import Union, Sequence, Callable, Dict
+from typing import Union, Sequence, Callable, Dict, List
 
 import numpy as np
 import torch
@@ -22,6 +22,8 @@ DoneBatchLike = Sequence[DoneLike]
 InfoValueLike = Union[str, int, float, bool, np.ndarray]
 InfoLike = Dict[str, InfoValueLike]
 InfoBatchLike = Sequence[InfoLike]
+
+HiddenState = List[torch.Tensor]
 
 AttributationLike = Union[np.ndarray, Dict[str, np.ndarray]]
 AttributationLikeStrict = torch.Tensor
