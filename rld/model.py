@@ -139,7 +139,7 @@ def _unpack_tensor_single(obs: ObsTensorStrict, space: Space) -> ObsTensorLike:
 def _unpack_tensor_batched(obs: ObsTensorStrict, space: Space) -> ObsTensorLike:
     batch_size = obs.size(0)
     return _merge_unpacked_batch(
-        [unpack_tensor(obs[b], space) for b in range(batch_size)]
+        [_unpack_tensor_single(obs[b], space) for b in range(batch_size)]
     )
 
 
