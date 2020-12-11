@@ -1,6 +1,6 @@
 from abc import ABC
+from typing import Optional
 
-import gym
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -65,35 +65,48 @@ class BaseRecurrentModel(RecurrentModel, ObsMixin, ActionMixin, ABC):
         )
         self.head = self.init_head()
 
-    def forward(
-        self, obs_flat: ObsTensorStrict, state: HiddenState
-    ) -> (torch.Tensor, HiddenState):
+        self._last_state: Optional[HiddenState] = None
+
+    def forward(self, obs_flat: ObsTensorStrict, state: HiddenState) -> torch.Tensor:
         obs = unpack_tensor(obs_flat, self.obs_space())
         obs = self.preprocess_obs(obs)
+
         x = F.relu(self.call_hidden(obs))
-        x, state = self.lstm(x, state)
+        x = x.unsqueeze(dim=1)
+
+        state = self.reshape_to_torch(state)
+        x, state = self.lstm(x, (state[0], state[1]))
+        state = self.reshape_to_store(torch.stack(state))
+
+        x = x.squeeze(dim=1)
         x = self.head(x)
-        return x, list(state)
+
+        self._last_state = state
+        return x
 
     def input_device(self) -> torch.device:
         return torch.device("cpu")
 
     def initial_state(self) -> HiddenState:
-        return [
-            torch.zeros(
-                (1, 1, self.NUM_HIDDEN_NEURONS),
-                dtype=torch.float32,
-                device=self.input_device(),
-            ),
-            torch.zeros(
-                (1, 1, self.NUM_HIDDEN_NEURONS),
-                dtype=torch.float32,
-                device=self.input_device(),
-            ),
-        ]
+        return torch.zeros(
+            (1, 2, 1, self.NUM_HIDDEN_NEURONS),
+            dtype=torch.float32,
+            device=self.input_device(),
+        )
+
+    def last_output_state(self) -> HiddenState:
+        if self._last_state is None:
+            raise RuntimeError(
+                "Trying to get last output hidden state without calling "
+                "forward() first."
+            )
+        return self._last_state
 
 
 class BoxObsMixin(ObsMixin):
+    def obs_space(self) -> Space:
+        return BOX_OBS_SPACE
+
     def init_hidden(self: BaseModel) -> nn.Module:
         return nn.Linear(self.obs_space().sample().size, self.NUM_HIDDEN_NEURONS)
 
@@ -105,6 +118,9 @@ class BoxObsMixin(ObsMixin):
 
 
 class ImageObsMixin(ObsMixin):
+    def obs_space(self) -> Space:
+        return IMAGE_OBS_SPACE
+
     def init_hidden(self: BaseModel) -> nn.Module:
         image_size = self.obs_space().shape[:2]
         return nn.Sequential(
@@ -119,6 +135,9 @@ class ImageObsMixin(ObsMixin):
 
 
 class DictObxMixin(ObsMixin):
+    def obs_space(self) -> Space:
+        return DICT_OBS_SPACE
+
     def init_hidden(self: BaseModel) -> nn.Module:
         return nn.ModuleDict(
             {
@@ -137,75 +156,83 @@ class DictObxMixin(ObsMixin):
 
 
 class DiscreteActionMixin(ActionMixin):
+    def action_space(self) -> Space:
+        return DISCRETE_ACTION_SPACE
+
     def init_head(self: BaseModel) -> nn.Module:
         return nn.Linear(self.NUM_HIDDEN_NEURONS, self.action_space().n)
 
 
 class MultiDiscreteActionMixin(ActionMixin):
+    def action_space(self) -> Space:
+        return MULTI_DISCRETE_ACTION_SPACE
+
     def init_head(self: BaseModel) -> nn.Module:
         return nn.Linear(self.NUM_HIDDEN_NEURONS, sum(self.action_space().nvec))
 
 
-class BoxObsDiscreteActionModel(BaseModel, BoxObsMixin, DiscreteActionMixin):
-    def obs_space(self) -> gym.Space:
-        return BOX_OBS_SPACE
-
-    def action_space(self) -> gym.Space:
-        return DISCRETE_ACTION_SPACE
+class BoxObsDiscreteActionModel(BoxObsMixin, DiscreteActionMixin, BaseModel):
+    pass
 
 
-class BoxObsMultiDiscreteActionModel(BaseModel, BoxObsMixin, MultiDiscreteActionMixin):
-    def obs_space(self) -> gym.Space:
-        return BOX_OBS_SPACE
-
-    def action_space(self) -> gym.Space:
-        return MULTI_DISCRETE_ACTION_SPACE
+class BoxObsMultiDiscreteActionModel(BoxObsMixin, MultiDiscreteActionMixin, BaseModel):
+    pass
 
 
-class ImageObsDiscreteActionModel(BaseModel, ImageObsMixin, DiscreteActionMixin):
-    def obs_space(self) -> gym.Space:
-        return IMAGE_OBS_SPACE
-
-    def action_space(self) -> gym.Space:
-        return DISCRETE_ACTION_SPACE
+class ImageObsDiscreteActionModel(ImageObsMixin, DiscreteActionMixin, BaseModel):
+    pass
 
 
 class ImageObsMultiDiscreteActionModel(
-    BaseModel, ImageObsMixin, MultiDiscreteActionMixin
+    ImageObsMixin, MultiDiscreteActionMixin, BaseModel
 ):
-    def obs_space(self) -> gym.Space:
-        return IMAGE_OBS_SPACE
-
-    def action_space(self) -> gym.Space:
-        return MULTI_DISCRETE_ACTION_SPACE
+    pass
 
 
-class DictObsDiscreteActionModel(BaseModel, DictObxMixin, DiscreteActionMixin):
-    def obs_space(self) -> gym.Space:
-        return DICT_OBS_SPACE
-
-    def action_space(self) -> gym.Space:
-        return DISCRETE_ACTION_SPACE
+class DictObsDiscreteActionModel(DictObxMixin, DiscreteActionMixin, BaseModel):
+    pass
 
 
 class DictObsMultiDiscreteActionModel(
-    BaseModel, DictObxMixin, MultiDiscreteActionMixin
+    DictObxMixin, MultiDiscreteActionMixin, BaseModel
 ):
-    def obs_space(self) -> gym.Space:
-        return DICT_OBS_SPACE
-
-    def action_space(self) -> gym.Space:
-        return MULTI_DISCRETE_ACTION_SPACE
+    pass
 
 
 class BoxObsDiscreteActionRecurrentModel(
-    BaseRecurrentModel, BoxObsMixin, DiscreteActionMixin
+    BoxObsMixin, DiscreteActionMixin, BaseRecurrentModel
 ):
-    def obs_space(self) -> Space:
-        return BOX_OBS_SPACE
+    pass
 
-    def action_space(self) -> Space:
-        return DISCRETE_ACTION_SPACE
+
+class BoxObsMultiDiscreteActionRecurrentModel(
+    BoxObsMixin, MultiDiscreteActionMixin, BaseRecurrentModel
+):
+    pass
+
+
+class ImageObsDiscreteActionRecurrentModel(
+    ImageObsMixin, DiscreteActionMixin, BaseRecurrentModel
+):
+    pass
+
+
+class ImageObsMultiDiscreteActionRecurrentModel(
+    ImageObsMixin, MultiDiscreteActionMixin, BaseRecurrentModel
+):
+    pass
+
+
+class DictObsDiscreteActionRecurrentModel(
+    DictObxMixin, DiscreteActionMixin, BaseRecurrentModel
+):
+    pass
+
+
+class DictObsMultiDiscreteActionRecurrentModel(
+    DictObxMixin, MultiDiscreteActionMixin, BaseRecurrentModel
+):
+    pass
 
 
 ALL_MODELS = [
@@ -217,4 +244,9 @@ ALL_MODELS = [
     DictObsMultiDiscreteActionModel,
     # Recurrent models
     BoxObsDiscreteActionRecurrentModel,
+    BoxObsMultiDiscreteActionRecurrentModel,
+    ImageObsDiscreteActionRecurrentModel,
+    ImageObsMultiDiscreteActionRecurrentModel,
+    DictObsDiscreteActionRecurrentModel,
+    DictObsMultiDiscreteActionRecurrentModel,
 ]

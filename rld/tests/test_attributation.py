@@ -13,7 +13,7 @@ from rld.attributation import (
     AttributationNormalizer,
     AttributationNormalizationMode,
 )
-from rld.model import Model, RayModelWrapper
+from rld.model import Model, RayFeedforwardModelWrapper, RayRecurrentModelWrapper
 from rld.tests.resources.envs import ALL_ENVS, collect_rollout
 from rld.tests.resources.models import ALL_MODELS
 from rld.tests.resources.spaces import IMAGE_OBS_SPACE
@@ -64,9 +64,37 @@ class TestAttributation(unittest.TestCase):
         ray.init(local_mode=True)
         for trainer_fn in ALL_TRAINERS:
             for env_fn in ALL_ENVS:
-                with self.subTest(trainer=trainer_fn, env=env_fn):
-                    trainer = trainer_fn(config={"env": env_fn, "framework": "torch",})
-                    model = RayModelWrapper(trainer.get_policy().model)
-                    env = env_fn()
-                    self._collect_rollout_and_validate_attributations(env, model)
+                for is_recurrent in (False, True):
+                    with self.subTest(
+                        trainer=trainer_fn, env=env_fn, is_recurrent=is_recurrent
+                    ):
+                        if not is_recurrent:
+                            trainer = trainer_fn(
+                                config={
+                                    "env": env_fn,
+                                    "framework": "torch",
+                                    "num_gpus": 0,
+                                }
+                            )
+                            model = RayFeedforwardModelWrapper(
+                                trainer.get_policy().model
+                            )
+                        else:
+                            trainer = trainer_fn(
+                                config={
+                                    "env": env_fn,
+                                    "framework": "torch",
+                                    "num_gpus": 0,
+                                    "model": {
+                                        "use_lstm": True,
+                                        "max_seq_len": 4,
+                                        "lstm_cell_size": 8,
+                                    },
+                                }
+                            )
+                            model = RayRecurrentModelWrapper(
+                                trainer.get_policy().model, 8
+                            )
+                        env = env_fn()
+                        self._collect_rollout_and_validate_attributations(env, model)
         ray.shutdown()

@@ -23,7 +23,7 @@ InfoValueLike = Union[str, int, float, bool, np.ndarray]
 InfoLike = Dict[str, InfoValueLike]
 InfoBatchLike = Sequence[InfoLike]
 
-HiddenState = List[torch.Tensor]
+HiddenState = torch.Tensor
 
 AttributationLike = Union[np.ndarray, Dict[str, np.ndarray]]
 AttributationLikeStrict = torch.Tensor
