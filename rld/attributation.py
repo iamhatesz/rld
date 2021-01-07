@@ -14,7 +14,7 @@ from captum.attr import IntegratedGradients
 from gym.spaces import flatten, unflatten
 
 from rld.exception import ActionSpaceNotSupported, EnumValueNotFound
-from rld.model import Model
+from rld.model import Model, RecurrentModel, pack_array, unpack_array
 from rld.rollout import (
     Trajectory,
     Timestep,
@@ -23,7 +23,7 @@ from rld.rollout import (
     remove_channel_dim_from_image_space,
     Attributation,
 )
-from rld.typing import BaselineBuilder, AttributationLike, ActionLike
+from rld.typing import BaselineBuilder, AttributationLike, ActionLike, HiddenState
 
 
 class AttributationNormalizationMode(IntEnum):
@@ -104,6 +104,7 @@ class AttributationTarget(IntEnum):
 @dataclass
 class TimestepAttributationBatch:
     inputs: torch.Tensor
+    state: Optional[HiddenState]
     baselines: torch.Tensor
     targets: torch.Tensor
     actions: List[ActionLike]
@@ -125,6 +126,10 @@ class AttributationTrajectoryIterator(abc.Iterator):
         self.baseline = baseline
         self.target = target
         self._it = iter(self.trajectory)
+        self._model_recurrent = isinstance(self.model, RecurrentModel)
+        self._state: Optional[
+            HiddenState
+        ] = self.model.initial_state() if self._model_recurrent else None
 
     @torch.no_grad()
     def __next__(self) -> TimestepAttributationBatch:
@@ -133,7 +138,8 @@ class AttributationTrajectoryIterator(abc.Iterator):
         except StopIteration:
             raise StopIteration
 
-        inputs = self.model.flatten_obs(timestep.obs)
+        # inputs = self.model.flatten_obs(timestep.obs)
+        inputs = pack_array(timestep.obs, self.model.obs_space())
 
         if self.baseline is not None:
             baselines = self.baseline(inputs)
@@ -145,7 +151,15 @@ class AttributationTrajectoryIterator(abc.Iterator):
             baselines, device=self.model.output_device()
         ).unsqueeze(dim=0)
 
-        logits = self.model(inputs).squeeze(dim=0).cpu()
+        if self._model_recurrent:
+            out = self.model(inputs, self._state)
+            state = self.model.last_output_state().to(device=self.model.input_device())
+            self._state = state
+            logits = out.squeeze(dim=0).to(device=self.model.input_device())
+        else:
+            logits = (
+                self.model(inputs).squeeze(dim=0).to(device=self.model.input_device())
+            )
         probs = torch.softmax(logits, dim=-1)
 
         targets = []
@@ -206,12 +220,16 @@ class AttributationTrajectoryIterator(abc.Iterator):
                 raise ActionSpaceNotSupported(self.model.action_space())
 
         inputs_all = []
+        if self._model_recurrent:
+            states_all = []
         baselines_all = []
         targets_all = []
 
         for _, target, _ in targets:
             if isinstance(self.model.action_space(), gym.spaces.Discrete):
                 inputs_for_target = inputs
+                if self._model_recurrent:
+                    states_for_target = state
                 baselines_for_target = baselines
                 targets_for_target = torch.tensor(
                     target, device=self.model.output_device(), dtype=torch.long
@@ -221,6 +239,8 @@ class AttributationTrajectoryIterator(abc.Iterator):
                     self.model.action_space()
                 )
                 inputs_for_target = _extend_batch_dim(inputs, num_sub_actions)
+                if self._model_recurrent:
+                    states_for_target = _extend_batch_dim(state, num_sub_actions)
                 baselines_for_target = _extend_batch_dim(baselines, num_sub_actions)
                 targets_for_target = torch.tensor(
                     target, device=self.model.output_device(), dtype=torch.long
@@ -228,10 +248,16 @@ class AttributationTrajectoryIterator(abc.Iterator):
             else:
                 raise ActionSpaceNotSupported(self.model.action_space())
             inputs_all.append(inputs_for_target)
+            if self._model_recurrent:
+                states_all.append(states_for_target)
             baselines_all.append(baselines_for_target)
             targets_all.append(targets_for_target)
 
         inputs_batch = torch.cat(inputs_all, dim=0)
+        if self._model_recurrent:
+            states_batch = torch.cat(states_all, dim=0)
+        else:
+            states_batch = None
         baselines_batch = torch.cat(baselines_all, dim=0)
         targets_batch = torch.cat(targets_all, dim=0)
         actions = [action for action, _, _ in targets]
@@ -239,6 +265,7 @@ class AttributationTrajectoryIterator(abc.Iterator):
 
         return TimestepAttributationBatch(
             inputs=inputs_batch,
+            state=states_batch,
             baselines=baselines_batch,
             targets=targets_batch,
             actions=actions,
@@ -256,30 +283,41 @@ def attribute_trajectory(
     model: Model,
     normalizer: AttributationNormalizer,
 ) -> Trajectory:
+    obs_space = model.obs_space()
+    is_recurrent = isinstance(model, RecurrentModel)
     algo = IntegratedGradients(model)
     timesteps = []
     for batch in trajectory_it:
-        raw_attributation = algo.attribute(
-            batch.inputs, baselines=batch.baselines, target=batch.targets
-        )
+        if not is_recurrent:
+            raw_attributation = algo.attribute(
+                batch.inputs, baselines=batch.baselines, target=batch.targets
+            )
+        else:
+            raw_attributation = algo.attribute(
+                (batch.inputs, batch.state),
+                baselines=(batch.baselines, batch.state),
+                target=batch.targets,
+            )
+            raw_attributation = raw_attributation[0]
+        raw_attributation = raw_attributation.detach().cpu().numpy()
 
         if isinstance(model.action_space(), gym.spaces.Discrete):
             attributation = Attributation(
                 picked=DiscreteActionAttributation(
                     action=batch.actions[0],
                     prob=batch.action_probs[0],
-                    raw=model.unflatten_obs(raw_attributation[0].numpy()),
+                    raw=unpack_array(raw_attributation[0], obs_space),
                     normalized=normalizer.transform(
-                        model.unflatten_obs(raw_attributation[0].numpy())
+                        unpack_array(raw_attributation[0], obs_space)
                     ),
                 ),
                 top=[
                     DiscreteActionAttributation(
                         action=batch.actions[i],
                         prob=batch.action_probs[i],
-                        raw=model.unflatten_obs(raw_attributation[i].numpy()),
+                        raw=unpack_array(raw_attributation[i], obs_space),
                         normalized=normalizer.transform(
-                            model.unflatten_obs(raw_attributation[i].numpy())
+                            unpack_array(raw_attributation[i], obs_space)
                         ),
                     )
                     for i in range(1, len(batch.actions))
@@ -289,7 +327,7 @@ def attribute_trajectory(
             num_sub_actions = _multi_discrete_actions_count(model.action_space())
             grouped_attributation = [
                 raw_attributation[i : i + num_sub_actions]
-                for i in range(0, raw_attributation.size(0), num_sub_actions)
+                for i in range(0, raw_attributation.shape[0], num_sub_actions)
             ]
 
             attributation = Attributation(
@@ -297,12 +335,12 @@ def attribute_trajectory(
                     action=batch.actions[0],
                     prob=batch.action_probs[0],
                     raw=[
-                        model.unflatten_obs(grouped_attributation[0][j].numpy())
+                        unpack_array(grouped_attributation[0][j], obs_space)
                         for j in range(num_sub_actions)
                     ],
                     normalized=[
                         normalizer.transform(
-                            model.unflatten_obs(grouped_attributation[0][j].numpy())
+                            unpack_array(grouped_attributation[0][j], obs_space)
                         )
                         for j in range(num_sub_actions)
                     ],
@@ -312,12 +350,12 @@ def attribute_trajectory(
                         action=batch.actions[i],
                         prob=batch.action_probs[i],
                         raw=[
-                            model.unflatten_obs(grouped_attributation[i][j].numpy())
+                            unpack_array(grouped_attributation[i][j], obs_space)
                             for j in range(num_sub_actions)
                         ],
                         normalized=[
                             normalizer.transform(
-                                model.unflatten_obs(grouped_attributation[i][j].numpy())
+                                unpack_array(grouped_attributation[i][j], obs_space)
                             )
                             for j in range(num_sub_actions)
                         ],
