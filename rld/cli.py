@@ -103,8 +103,11 @@ def attribute(out: str, rllib: bool, config: str, rollout: str):
 @click.option("--port", default=5000)
 @click.option("--viewer", default="none")
 @click.option("--debug/--no-debug", default=False)
+@click.option("--limit-steps", default=0)
 @click.argument("rollout")
-def start(host: str, port: int, viewer: str, debug: bool, rollout: str):
+def start(
+    host: str, port: int, viewer: str, debug: bool, limit_steps: int, rollout: str
+):
     """
     This script runs web server serving application to visualize calculated
     attributations.
@@ -121,6 +124,7 @@ def start(host: str, port: int, viewer: str, debug: bool, rollout: str):
         port=port,
         viewer=viewer,
         debug=debug,
+        limit_steps=limit_steps,
     )
     app.run(host=host, port=port, debug=debug)
 
