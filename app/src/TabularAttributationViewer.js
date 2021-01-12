@@ -6,7 +6,10 @@ import Table from 'react-bootstrap/Table';
 
 class TabularAttributationViewer extends React.Component {
   timestepFeatures() {
-    return this.props.viewer.iterate(this.props.currentTimestep.obs, this.props.selectedAction)
+    const selectedActionAttr = this.props.selectedAction === "picked"
+      ? this.props.currentTimestep.attributations.picked
+      : this.props.currentTimestep.attributations.top[this.props.selectedAction];
+    return this.props.viewer.iterate(this.props.currentTimestep.obs, selectedActionAttr)
       .filter(
         ({label, ...rest}) => label.includes(this.props.filterPhrase)
       )

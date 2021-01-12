@@ -140,8 +140,7 @@ class App extends React.Component {
       {
         currentTimestepIndex: timestepIndex,
         currentTimestep: this.state.currentTrajectory.timesteps[timestepIndex],
-        selectedAction: this.state.currentTrajectory.timesteps[timestepIndex]
-          .attributations.picked,
+        selectedAction: "picked",
       },
       () => this.viewer.update(this.state.currentTimestep)
     );
@@ -207,13 +206,13 @@ class App extends React.Component {
 
   selectPickedAction = (e) => {
     this.setState({
-      selectedAction: this.state.currentTimestep.attributations.picked,
+      selectedAction: "picked",
     });
   };
 
   selectAction(actionId) {
     this.setState({
-      selectedAction: this.state.currentTimestep.attributations.top[actionId],
+      selectedAction: actionId,
     });
   }
 

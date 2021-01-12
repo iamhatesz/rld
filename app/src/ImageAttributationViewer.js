@@ -30,7 +30,10 @@ class ImageAttributationViewer extends React.Component {
   }
 
   attrImage() {
-    return this.attrEncoder.encode(this.props.selectedAction.normalized);
+    const selectedActionAttr = this.props.selectedAction === "picked"
+      ? this.props.currentTimestep.attributations.picked
+      : this.props.currentTimestep.attributations.top[this.props.selectedAction];
+    return this.attrEncoder.encode(selectedActionAttr.normalized);
   }
 
   render() {

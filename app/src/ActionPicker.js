@@ -9,6 +9,9 @@ import './ActionPicker.css';
 class ActionPicker extends React.Component {
   render() {
     const {attributations: {picked: pickedAction, top: topActions}} = this.props.currentTimestep;
+    const selectedActionAttr = this.props.selectedAction === "picked"
+      ? this.props.currentTimestep.attributations.picked
+      : this.props.currentTimestep.attributations.top[this.props.selectedAction];
 
     return (
       <Container fluid>
@@ -41,7 +44,7 @@ class ActionPicker extends React.Component {
         </Row>
         <Row>
           <pre className="selected-action">
-            {this.props.stringifyAction(this.props.selectedAction.action)}&nbsp;
+            {this.props.stringifyAction(selectedActionAttr.action)}&nbsp;
             ({pickedAction.prob.toFixed(2)})
           </pre>
         </Row>
