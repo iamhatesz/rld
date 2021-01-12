@@ -18,7 +18,9 @@ class NumpyJSONEncoder(JSONEncoder):
         return super().default(o)
 
 
-def init(rollout: Rollout, host: str, port: int, viewer: str, debug: bool) -> Flask:
+def init(
+    rollout: Rollout, host: str, port: int, viewer: str, debug: bool, limit_steps: int
+) -> Flask:
     this_rollout = rollout
     app = Flask(__name__, template_folder="app", static_folder="app/static")
     app.json_encoder = NumpyJSONEncoder
@@ -49,11 +51,9 @@ def init(rollout: Rollout, host: str, port: int, viewer: str, debug: bool) -> Fl
             this_trajectory = this_rollout.trajectories[index]
         except IndexError:
             raise TrajectoryNotFound()
-        if viewer == "atari":
-            # TODO For Atari we are sending only a few timesteps,
-            #  as buffering is not yet implemented
+        if limit_steps > 0:
             this_trajectory = replace(
-                this_trajectory, timesteps=this_trajectory.timesteps[:10]
+                this_trajectory, timesteps=this_trajectory.timesteps[:limit_steps]
             )
         return jsonify(**asdict(this_trajectory))
 
