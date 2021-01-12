@@ -8,7 +8,7 @@ import {getActionCodeAttributation} from "./utils/data";
 class TabularAttributationViewer extends React.Component {
   timestepFeatures() {
     const selectedActionAttr = getActionCodeAttributation(this.props.currentTimestep, this.props.selectedAction);
-    return this.props.viewer.iterate(this.props.currentTimestep.obs, selectedActionAttr)
+    return this.props.iterate(this.props.currentTimestep.obs, selectedActionAttr)
       .filter(
         ({label, ...rest}) => label.includes(this.props.filterPhrase)
       )
@@ -74,7 +74,7 @@ TabularAttributationViewer.defaultProps = {
   selectedAction: null,
   filterPhrase: '',
   filterComponents: null,
-  viewer: null,
+  iterate: null,
 };
 
 export default TabularAttributationViewer;
