@@ -112,6 +112,10 @@ class App extends React.Component {
     return this.state.fetchesInProgress > 0;
   }
 
+  isAttributationAvailable() {
+    return this.state.currentTimestep.attributations !== null;
+  }
+
   isPlaying() {
     return this.state.playing !== null;
   }
@@ -140,8 +144,7 @@ class App extends React.Component {
       {
         currentTimestepIndex: timestepIndex,
         currentTimestep: this.state.currentTrajectory.timesteps[timestepIndex],
-        selectedAction: this.state.currentTrajectory.timesteps[timestepIndex]
-          .attributations.picked,
+        selectedAction: "picked",
       },
       () => this.viewer.update(this.state.currentTimestep)
     );
@@ -207,13 +210,13 @@ class App extends React.Component {
 
   selectPickedAction = (e) => {
     this.setState({
-      selectedAction: this.state.currentTimestep.attributations.picked,
+      selectedAction: "picked",
     });
   };
 
   selectAction(actionId) {
     this.setState({
-      selectedAction: this.state.currentTimestep.attributations.top[actionId],
+      selectedAction: actionId,
     });
   }
 
@@ -233,9 +236,11 @@ class App extends React.Component {
               <Nav.Link as={Link} to="/">
                 Viewer
               </Nav.Link>
-              <Nav.Link as={Link} to="/attributation">
-                Attributation
-              </Nav.Link>
+              {this.isTimestepLoaded() && this.isAttributationAvailable() && (
+                <Nav.Link as={Link} to="/attributation">
+                  Attributation
+                </Nav.Link>
+              )}
             </Nav>
           </Navbar.Collapse>
           <Controls
@@ -264,7 +269,7 @@ class App extends React.Component {
             )}
           </Route>
           <Route path="/attributation" exact>
-            {this.isTimestepLoaded() && (
+            {this.isTimestepLoaded() && this.isAttributationAvailable() && (
               <AttributationPage
                 currentTimestep={this.state.currentTimestep}
                 selectedAction={this.state.selectedAction}

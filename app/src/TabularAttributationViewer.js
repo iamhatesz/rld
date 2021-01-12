@@ -3,10 +3,12 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Form from 'react-bootstrap/Form';
 import Table from 'react-bootstrap/Table';
+import {getActionCodeAttributation} from "./utils/data";
 
 class TabularAttributationViewer extends React.Component {
   timestepFeatures() {
-    return this.props.viewer.iterate(this.props.currentTimestep.obs, this.props.selectedAction)
+    const selectedActionAttr = getActionCodeAttributation(this.props.currentTimestep, this.props.selectedAction);
+    return this.props.viewer.iterate(this.props.currentTimestep.obs, selectedActionAttr)
       .filter(
         ({label, ...rest}) => label.includes(this.props.filterPhrase)
       )
