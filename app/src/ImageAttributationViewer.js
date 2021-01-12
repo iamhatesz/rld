@@ -8,6 +8,7 @@ import {
   flattenStackedPixel,
   identityPixelColor,
 } from './utils/math';
+import {getActionCodeAttributation} from "./utils/data";
 
 class ImageAttributationViewer extends React.Component {
   constructor(props) {
@@ -30,9 +31,7 @@ class ImageAttributationViewer extends React.Component {
   }
 
   attrImage() {
-    const selectedActionAttr = this.props.selectedAction === "picked"
-      ? this.props.currentTimestep.attributations.picked
-      : this.props.currentTimestep.attributations.top[this.props.selectedAction];
+    const selectedActionAttr = getActionCodeAttributation(this.props.currentTimestep, this.props.selectedAction);
     return this.attrEncoder.encode(selectedActionAttr.normalized);
   }
 

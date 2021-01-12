@@ -5,13 +5,12 @@ import Dropdown from 'react-bootstrap/Dropdown';
 import Container from 'react-bootstrap/Container';
 import _ from 'lodash';
 import './ActionPicker.css';
+import {getActionCodeAttributation} from "./utils/data";
 
 class ActionPicker extends React.Component {
   render() {
     const {attributations: {picked: pickedAction, top: topActions}} = this.props.currentTimestep;
-    const selectedActionAttr = this.props.selectedAction === "picked"
-      ? this.props.currentTimestep.attributations.picked
-      : this.props.currentTimestep.attributations.top[this.props.selectedAction];
+    const selectedActionAttr = getActionCodeAttributation(this.props.currentTimestep, this.props.selectedAction);
 
     return (
       <Container fluid>
