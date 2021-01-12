@@ -43,7 +43,7 @@ class AttributationPage extends React.Component {
                   selectedAction={this.props.selectedAction}
                   selectPickedAction={this.props.selectPickedAction}
                   selectAction={this.props.selectAction}
-                  stringifyAction={this.props.viewer.stringifyAction}
+                  stringifyAction={this.props.viewer.stringifyAction.bind(this.props.viewer)}
                 />
               </Row>
               <Row>
