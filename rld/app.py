@@ -13,6 +13,8 @@ class NumpyJSONEncoder(JSONEncoder):
     def default(self, o):
         if isinstance(o, np.ndarray):
             return o.tolist()
+        elif isinstance(o, np.bool_):
+            return bool(o)
         return super().default(o)
 
 
