@@ -6,7 +6,7 @@ import Table from 'react-bootstrap/Table';
 
 class TabularAttributationViewer extends React.Component {
   timestepFeatures() {
-    return this.props.iterate(this.props.currentTimestep.obs, this.props.selectedAction)
+    return this.props.viewer.iterate(this.props.currentTimestep.obs, this.props.selectedAction)
       .filter(
         ({label, ...rest}) => label.includes(this.props.filterPhrase)
       )
@@ -40,13 +40,13 @@ class TabularAttributationViewer extends React.Component {
             </thead>
             <tbody>
               {this.timestepFeatures().map(
-                ({label, rawValue, realValue, rawAttributation, normalizedAttributation}) => (
+                ({label, rawValue, realValue, realValueUnit, rawAttributation, normalizedAttributation}) => (
                   <tr key={label}>
                     <td>{label}</td>
                     <td>{rawValue.toFixed(4)}</td>
-                    <td>{realValue.toFixed(4)}</td>
-                    <td>{rawAttributation.toFixed(4)}</td>
-                    <td>{normalizedAttributation.toFixed(2)}</td>
+                    <td>{realValue.toFixed(4)} {realValueUnit}</td>
+                    <td>{this.formatAttributation(rawAttributation, 4)}</td>
+                    <td>{this.formatAttributation(normalizedAttributation, 2)}</td>
                   </tr>
                 )
               )}
@@ -55,6 +55,15 @@ class TabularAttributationViewer extends React.Component {
         </Row>
       </Container>
     );
+  }
+
+  formatAttributation(attr, fractionDigits = 4) {
+    if (Array.isArray(attr)) {
+      const joined = attr.map(a => this.formatAttributation(a, fractionDigits)).join(', ');
+      return `[${joined}]`;
+    } else {
+      return attr.toFixed(fractionDigits);
+    }
   }
 }
 

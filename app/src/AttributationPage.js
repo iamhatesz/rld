@@ -19,7 +19,7 @@ class AttributationPage extends React.Component {
           selectedAction={this.props.selectedAction}
           filterPhrase={this.props.filterPhrase}
           filterComponents={this.props.filterComponents.bind(this)}
-          iterate={this.props.viewer.iterate}
+          viewer={this.props.viewer}
         />
       );
     } else if (this.props.viewer.attributationViewerType() === 'image') {

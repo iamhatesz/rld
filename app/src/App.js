@@ -14,9 +14,9 @@ import Spinner from 'react-bootstrap/Spinner';
 import { NoneViewer } from './viewer/none';
 
 const VIEWER_REGISTRY = {
-  none: NoneViewer,
-  cartpole: CartPoleViewer,
-  atari: AtariViewer,
+  'none': NoneViewer,
+  'cartpole': CartPoleViewer,
+  'atari': AtariViewer,
 };
 
 class App extends React.Component {
@@ -285,7 +285,7 @@ class App extends React.Component {
 
 App.defaultProps = {
   backendUrl: 'http://localhost:5000/',
-  viewerId: 'atari',
+  viewerId: 'none',
 };
 
 export default App;

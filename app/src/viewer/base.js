@@ -1,7 +1,9 @@
+import _ from 'lodash';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import ImageEncoder from '../utils/imageEncoder';
 import { flattenStackedPixel, identityPixelColor } from '../utils/math';
+import SpriteText from "three-spritetext";
 
 class Viewer {
   domElement() {
@@ -98,11 +100,20 @@ class ImageViewer extends Viewer {
 }
 
 class WebGLViewer extends Viewer {
-  constructor() {
+  static TEXT_LARGE = 0.01;
+  static TEXT_NORMAL = 0.007;
+  static TEXT_SMALL = 0.005;
+
+  static TEXT_WHITE = "white";
+  static TEXT_GREEN = "green";
+  static TEXT_RED = "red";
+  static TEXT_GRAY = "gray";
+
+  constructor(width = 600, height = 400) {
     super();
 
-    this.width = 600;
-    this.height = 400;
+    this.width = width;
+    this.height = height;
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(
@@ -126,6 +137,8 @@ class WebGLViewer extends Viewer {
       this.cameraInitialPosition().toArray()
     );
     this.controls.target = this.centerOfScene();
+
+    this.texts = {};
 
     this.animate();
   }
@@ -162,6 +175,45 @@ class WebGLViewer extends Viewer {
     requestAnimationFrame(this.animate.bind(this));
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
+
+    Object.values(this.texts).forEach(obj => {
+      obj.sprite.position.copy(this.projectScreenToWorld(obj.initialPosition));
+    })
+  }
+
+  addText(key, text, position, size = WebGLViewer.TEXT_NORMAL, color = WebGLViewer.TEXT_WHITE) {
+    let obj = _.get(this.texts, key);
+    if (typeof obj === "undefined") {
+      obj = {
+        initialPosition: position,
+        sprite: new SpriteText(text, size, color)
+      };
+      obj.sprite.center.set(0.5, 0.5);
+      obj.sprite.position.copy(this.projectScreenToWorld(position));
+    }
+    this.texts[key] = obj;
+    this.scene.add(obj.sprite);
+  }
+
+  updateText(key, text = null, position = null, size = null, color = null) {
+    const obj = _.get(this.texts, key);
+    if (text !== null) {
+      obj.sprite.text = text;
+    }
+    if (position !== null) {
+      obj.initialPosition = position;
+      obj.sprite.position.copy(this.projectScreenToWorld(position));
+    }
+    if (size !== null) {
+      obj.sprite.size = size;
+    }
+    if (color !== null) {
+      obj.sprite.color = color;
+    }
+  }
+
+  projectScreenToWorld(point) {
+    return new THREE.Vector3(point.x, point.y, -1).unproject(this.camera);
   }
 }
 

@@ -9,7 +9,7 @@ class Viewer extends React.Component {
 
   componentDidMount() {
     if (this.isFullMode()) {
-      this.props.viewer.resize(600, 400);
+      this.props.viewer.resize(800, 600);
     } else {
       this.props.viewer.resize(
         this.sceneRef.current.offsetWidth,
