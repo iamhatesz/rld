@@ -100,9 +100,10 @@ class ImageViewer extends Viewer {
 }
 
 class WebGLViewer extends Viewer {
-  static TEXT_LARGE = 0.01;
-  static TEXT_NORMAL = 0.007;
-  static TEXT_SMALL = 0.005;
+  static TEXT_LARGE = 5;
+  static TEXT_NORMAL = 4;
+  static TEXT_SMALL = 3;
+  static TEXT_TINY = 2;
 
   static TEXT_WHITE = "white";
   static TEXT_GREEN = "green";
@@ -181,15 +182,26 @@ class WebGLViewer extends Viewer {
     })
   }
 
-  addText(key, text, position, size = WebGLViewer.TEXT_NORMAL, color = WebGLViewer.TEXT_WHITE) {
+  addText(key, text, position, size = WebGLViewer.TEXT_NORMAL, color = WebGLViewer.TEXT_WHITE, alignment = 'center') {
     let obj = _.get(this.texts, key);
     if (typeof obj === "undefined") {
       obj = {
         initialPosition: position,
-        sprite: new SpriteText(text, size, color)
+        sprite: new SpriteText(text, size / this.height, color)
       };
-      obj.sprite.center.set(0.5, 0.5);
+      if (alignment === 'center') {
+        obj.sprite.center.set(0.5, 0.5);
+      } else if (alignment === 'left') {
+        obj.sprite.center.set(0.0, 0.5);
+      } else if (alignment === 'right') {
+        obj.sprite.center.set(1.0, 0.5);
+      } else {
+        throw new Error('Invalid `alignment` value.');
+      }
       obj.sprite.position.copy(this.projectScreenToWorld(position));
+      obj.sprite.fontFace = 'Arial';
+      obj.sprite.fontSize = size * 10.0;
+      obj.sprite.fontWeight = 'bold';
     }
     this.texts[key] = obj;
     this.scene.add(obj.sprite);
