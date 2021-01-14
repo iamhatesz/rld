@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import React from 'react';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
@@ -8,10 +9,20 @@ import {getActionCodeAttributation} from "./utils/data";
 class TabularAttributationViewer extends React.Component {
   timestepFeatures() {
     const selectedActionAttr = getActionCodeAttributation(this.props.currentTimestep, this.props.selectedAction);
-    return this.props.iterate(this.props.currentTimestep.obs, selectedActionAttr)
-      .filter(
-        ({label, ...rest}) => label.includes(this.props.filterPhrase)
-      )
+    const features = this.props.iterate(this.props.currentTimestep.obs, selectedActionAttr);
+    const phraseFilteredFeatures = features.filter(
+      ({label, ...rest}) => label.toLowerCase().includes(this.props.filterPhrase.toLowerCase())
+    );
+    const sortedFeatures = _.sortBy(phraseFilteredFeatures, [
+      ({normalizedAttributation}) => {
+        if (_.isArray(normalizedAttributation)) {
+          return normalizedAttributation[0];
+        } else {
+          return normalizedAttributation;
+        }
+      }
+    ]);
+    return _.reverse(sortedFeatures);
   }
 
   render() {
