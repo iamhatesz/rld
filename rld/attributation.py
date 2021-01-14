@@ -160,7 +160,15 @@ class AttributationTrajectoryIterator(abc.Iterator):
             logits = (
                 self.model(inputs).squeeze(dim=0).to(device=self.model.input_device())
             )
-        probs = torch.softmax(logits, dim=-1)
+
+        if isinstance(self.model.action_space(), gym.spaces.Discrete):
+            probs = torch.softmax(logits, dim=-1)
+        elif isinstance(self.model.action_space(), gym.spaces.MultiDiscrete):
+            probs = _multicategorical_softmax(
+                logits, list(self.model.action_space().nvec)
+            )
+        else:
+            raise ActionSpaceNotSupported(self.model.action_space())
 
         targets = []
 
@@ -422,3 +430,14 @@ def _action_to_raw_action(action_space: gym.Space, action: ActionLike) -> Action
         return action + np.array(offsets)
     else:
         raise ActionSpaceNotSupported(action_space)
+
+
+def _multicategorical_softmax(t: torch.Tensor, sizes: List[int]) -> torch.Tensor:
+    probs = torch.empty_like(t)
+    offset = 0
+    for sub_space_size in sizes:
+        probs[offset : offset + sub_space_size] = torch.softmax(
+            t[offset : offset + sub_space_size], dim=-1
+        )
+        offset += sub_space_size
+    return probs
