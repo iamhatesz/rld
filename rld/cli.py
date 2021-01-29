@@ -18,6 +18,13 @@ from rld.rollout import (
     Rollout,
 )
 
+_KNOWN_EXTRA_EXTENSIONS = [
+    # These extensions are sometimes used by Python shelve module.
+    ".dat",
+    ".bak",
+    ".dir",
+]
+
 
 @click.group()
 def main():
@@ -63,7 +70,14 @@ def attribute(out: str, rllib: bool, config: str, rollout: str):
         raise FileNotFoundError(f"Config file `{config}` not found.")
     rollout_path = Path(rollout)
     if not rollout_path.exists():
-        raise FileNotFoundError(f"Rollout file `{rollout}` not found.")
+        for extra_ext in _KNOWN_EXTRA_EXTENSIONS:
+            rollout_path_with_extra_ext = rollout_path.with_suffix(
+                rollout_path.suffix + extra_ext
+            )
+            if rollout_path_with_extra_ext.exists():
+                break
+        else:
+            raise FileNotFoundError(f"Rollout file `{rollout}` not found.")
     out_path = Path(out)
 
     config = load_config(config_path)
