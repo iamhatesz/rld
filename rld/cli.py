@@ -71,7 +71,7 @@ def attribute(out: str, rllib: bool, config: str, rollout: str):
     _verify_rollout_exists(rollout_path)
     out_path = Path(out)
 
-    config = load_config(config_path)
+    config = _load_config(config_path)
 
     click.echo("Attributing rollout...")
 
@@ -133,7 +133,7 @@ def start(
     app.run(host=host, port=port, debug=debug)
 
 
-def load_config(config_path: Path) -> Config:
+def _load_config(config_path: Path) -> Config:
     config_spec = importlib.util.spec_from_file_location("config", config_path)
     config_mod = importlib.util.module_from_spec(config_spec)
     config_spec.loader.exec_module(config_mod)
