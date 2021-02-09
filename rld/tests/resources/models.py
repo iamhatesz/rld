@@ -14,7 +14,7 @@ from rld.tests.resources.spaces import (
     IMAGE_OBS_SPACE,
     DICT_OBS_SPACE,
 )
-from rld.typing import HiddenState, ObsTensorStrict, ObsTensorLike
+from rld.typing import HiddenStateTensor, ObsTensorStrict, ObsTensorLike
 
 
 class ObsMixin:
@@ -65,9 +65,11 @@ class BaseRecurrentModel(RecurrentModel, ObsMixin, ActionMixin, ABC):
         )
         self.head = self.init_head()
 
-        self._last_state: Optional[HiddenState] = None
+        self._last_state: Optional[HiddenStateTensor] = None
 
-    def forward(self, obs_flat: ObsTensorStrict, state: HiddenState) -> torch.Tensor:
+    def forward(
+        self, obs_flat: ObsTensorStrict, state: HiddenStateTensor
+    ) -> torch.Tensor:
         obs = unpack_tensor(obs_flat, self.obs_space())
         obs = self.preprocess_obs(obs)
 
@@ -87,14 +89,14 @@ class BaseRecurrentModel(RecurrentModel, ObsMixin, ActionMixin, ABC):
     def input_device(self) -> torch.device:
         return torch.device("cpu")
 
-    def initial_state(self) -> HiddenState:
+    def initial_state(self) -> HiddenStateTensor:
         return torch.zeros(
             (1, 2, 1, self.NUM_HIDDEN_NEURONS),
             dtype=torch.float32,
             device=self.input_device(),
         )
 
-    def last_output_state(self) -> HiddenState:
+    def last_output_state(self) -> HiddenStateTensor:
         if self._last_state is None:
             raise RuntimeError(
                 "Trying to get last output hidden state without calling "

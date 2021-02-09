@@ -23,10 +23,11 @@ InfoValueLike = Union[str, int, float, bool, np.ndarray]
 InfoLike = Dict[str, InfoValueLike]
 InfoBatchLike = Sequence[InfoLike]
 
-HiddenState = torch.Tensor
+HiddenState = np.ndarray
+HiddenStateTensor = torch.Tensor
 
 AttributationLike = Union[np.ndarray, Dict[str, np.ndarray]]
-AttributationLikeStrict = torch.Tensor
+AttributationLikeStrict = np.ndarray
 AttributationBatchLike = Sequence[AttributationLike]
 
 BaselineBuilder = Callable[[ObsLike], np.ndarray]

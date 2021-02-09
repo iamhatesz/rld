@@ -28,6 +28,8 @@ from rld.typing import (
     ActionLike,
     InfoLike,
     AttributationLike,
+    HiddenState,
+    AttributationLikeStrict,
 )
 
 
@@ -48,6 +50,10 @@ class ActionAttributation(ABC):
     prob: float
     raw: Union[AttributationLike, Sequence[AttributationLike]]
     normalized: Union[AttributationLike, Sequence[AttributationLike]]
+    hs_raw: Optional[Union[AttributationLikeStrict, Sequence[AttributationLikeStrict]]]
+    hs_normalized: Optional[
+        Union[AttributationLikeStrict, Sequence[AttributationLikeStrict]]
+    ]
 
     def is_complied(self, obs_space: gym.Space) -> bool:
         raise NotImplementedError
@@ -57,6 +63,8 @@ class ActionAttributation(ABC):
 class DiscreteActionAttributation(ActionAttributation):
     raw: AttributationLike
     normalized: AttributationLike
+    hs_raw: Optional[AttributationLikeStrict] = None
+    hs_normalized: Optional[AttributationLikeStrict] = None
 
     def is_complied(self, obs_space: gym.Space) -> bool:
         obs_space = remove_value_constraints_from_space(obs_space)
@@ -67,6 +75,8 @@ class DiscreteActionAttributation(ActionAttributation):
 class MultiDiscreteActionAttributation(ActionAttributation):
     raw: Sequence[AttributationLike]
     normalized: Sequence[AttributationLike]
+    hs_raw: Optional[Sequence[AttributationLikeStrict]] = None
+    hs_normalized: Optional[Sequence[AttributationLikeStrict]] = None
 
     def is_complied(self, obs_space: gym.Space) -> bool:
         obs_space = remove_value_constraints_from_space(obs_space)
@@ -117,6 +127,7 @@ class Timestep:
     done: DoneLike
     info: InfoLike
     attributations: Optional[Attributation] = None
+    hs: Optional[HiddenState] = None
 
 
 @dataclass

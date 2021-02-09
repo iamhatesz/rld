@@ -23,7 +23,14 @@ from rld.rollout import (
     remove_channel_dim_from_image_space,
     Attributation,
 )
-from rld.typing import BaselineBuilder, AttributationLike, ActionLike, HiddenState
+from rld.typing import (
+    BaselineBuilder,
+    AttributationLike,
+    ActionLike,
+    HiddenStateTensor,
+    AttributationLikeStrict,
+    ObsTensorStrict,
+)
 
 
 class AttributationNormalizationMode(IntEnum):
@@ -55,7 +62,15 @@ class AttributationNormalizer:
         if self.obs_image_channel_dim is not None:
             attr = np.sum(attr, axis=self.obs_image_channel_dim)
             obs_space = remove_channel_dim_from_image_space(obs_space)
-        attr = flatten(self.obs_space, attr)
+        attr = unflatten(obs_space, self._transform(flatten(self.obs_space, attr)))
+        return attr
+
+    def transform_only(
+        self, hs_attr: AttributationLikeStrict
+    ) -> AttributationLikeStrict:
+        return self._transform(hs_attr)
+
+    def _transform(self, attr: AttributationLikeStrict) -> AttributationLikeStrict:
         if self.mode == AttributationNormalizationMode.ALL:
             scaling_factor = self._calculate_safe_scaling_factor(np.abs(attr))
         elif self.mode == AttributationNormalizationMode.POSITIVE:
@@ -70,7 +85,7 @@ class AttributationNormalizer:
         else:
             raise EnumValueNotFound(self.mode, AttributationNormalizationMode)
         attr_norm = self._scale(attr, scaling_factor)
-        return unflatten(obs_space, attr_norm)
+        return attr_norm
 
     def _calculate_safe_scaling_factor(self, attr: AttributationLike) -> float:
         sorted_vals = np.sort(attr.flatten())
@@ -103,9 +118,10 @@ class AttributationTarget(IntEnum):
 
 @dataclass
 class TimestepAttributationBatch:
-    inputs: torch.Tensor
-    state: Optional[HiddenState]
-    baselines: torch.Tensor
+    input: ObsTensorStrict
+    hs: Optional[HiddenStateTensor]
+    input_baselines: ObsTensorStrict
+    hs_baselines: Optional[HiddenStateTensor]
     targets: torch.Tensor
     actions: List[ActionLike]
     action_probs: List[float]
@@ -127,64 +143,65 @@ class AttributationTrajectoryIterator(abc.Iterator):
         self.target = target
         self._it = iter(self.trajectory)
         self._model_recurrent = isinstance(self.model, RecurrentModel)
-        self._state: Optional[
-            HiddenState
+        self._model_obs_space = model.obs_space()
+        self._model_action_space = model.action_space()
+        self._hs: Optional[
+            HiddenStateTensor
         ] = self.model.initial_state() if self._model_recurrent else None
 
     @torch.no_grad()
     def __next__(self) -> TimestepAttributationBatch:
-        try:
-            timestep = next(self._it)
-        except StopIteration:
-            raise StopIteration
+        timestep = next(self._it)
 
-        # inputs = self.model.flatten_obs(timestep.obs)
-        inputs = pack_array(timestep.obs, self.model.obs_space())
+        inputs = pack_array(timestep.obs, self._model_obs_space)
 
         if self.baseline is not None:
+            # TODO Use inputs before packing
             baselines = self.baseline(inputs)
         else:
             baselines = np.zeros_like(inputs)
 
         inputs = torch.tensor(inputs, device=self.model.input_device()).unsqueeze(dim=0)
-        baselines = torch.tensor(
-            baselines, device=self.model.output_device()
-        ).unsqueeze(dim=0)
+        baselines = torch.tensor(baselines, device=self.model.input_device()).unsqueeze(
+            dim=0
+        )
 
         if self._model_recurrent:
-            out = self.model(inputs, self._state)
+            timestep = replace(timestep, hs=self._hs)
+            out = self.model(inputs, self._hs)
             state = self.model.last_output_state().to(device=self.model.input_device())
-            self._state = state
+            self._hs = state
             logits = out.squeeze(dim=0).to(device=self.model.input_device())
         else:
+            state = None
             logits = (
                 self.model(inputs).squeeze(dim=0).to(device=self.model.input_device())
             )
 
-        if isinstance(self.model.action_space(), gym.spaces.Discrete):
+        if isinstance(self._model_action_space, gym.spaces.Discrete):
             probs = torch.softmax(logits, dim=-1)
-        elif isinstance(self.model.action_space(), gym.spaces.MultiDiscrete):
+        elif isinstance(self._model_action_space, gym.spaces.MultiDiscrete):
             probs = _multicategorical_softmax(
                 logits, list(self.model.action_space().nvec)
             )
         else:
-            raise ActionSpaceNotSupported(self.model.action_space())
+            raise ActionSpaceNotSupported(self._model_action_space)
 
         targets = []
 
         picked_action = timestep.action
         raw_picked_action = _action_to_raw_action(
-            self.model.action_space(), timestep.action
+            self._model_action_space, timestep.action
         )
 
-        if isinstance(self.model.action_space(), gym.spaces.Discrete):
+        if isinstance(self._model_action_space, gym.spaces.Discrete):
             prob_of_picked_action = probs[picked_action].item()
-        elif isinstance(self.model.action_space(), gym.spaces.MultiDiscrete):
+        elif isinstance(self._model_action_space, gym.spaces.MultiDiscrete):
             prob_of_picked_action = (
                 torch.stack([probs[s] for s in raw_picked_action]).prod().item()
             )
         else:
-            raise ActionSpaceNotSupported(self.model.action_space())
+            raise ActionSpaceNotSupported(self._model_action_space)
 
         # Always add the picked action to the targets list
         targets.append((picked_action, raw_picked_action, prob_of_picked_action))
@@ -195,7 +212,7 @@ class AttributationTrajectoryIterator(abc.Iterator):
             AttributationTarget.TOP5,
             AttributationTarget.ALL,
         ):
-            if isinstance(self.model.action_space(), gym.spaces.Discrete):
+            if isinstance(self._model_action_space, gym.spaces.Discrete):
                 # Get total available actions
                 num_actions = logits.numel()
                 num_top = min(int(self.target.value), num_actions)
@@ -204,28 +221,26 @@ class AttributationTrajectoryIterator(abc.Iterator):
                     top_probs_with_index.indices, top_probs_with_index.values
                 ):
                     action = index.item()
-                    raw_action = _action_to_raw_action(
-                        self.model.action_space(), action
-                    )
+                    raw_action = _action_to_raw_action(self._model_action_space, action)
                     prob = prob.item()
                     targets.append((action, raw_action, prob))
-            elif isinstance(self.model.action_space(), gym.spaces.MultiDiscrete):
+            elif isinstance(self._model_action_space, gym.spaces.MultiDiscrete):
                 # Extract probs for each sub-action
                 subs_probs = _extract_multi_discrete_action_probs(
-                    self.model.action_space(), probs
+                    self._model_action_space, probs
                 )
                 # Calculate most probably actions
                 top_probs_with_index = _sort_multi_discrete_action_probs(subs_probs)
 
-                num_actions = _total_multi_discrete_actions(self.model.action_space())
+                num_actions = _total_multi_discrete_actions(self._model_action_space)
                 num_top = min(int(self.target.value), num_actions)
                 for action, prob in top_probs_with_index[:num_top]:
-                    raw_action = _action_to_raw_action(
-                        self.model.action_space(), action
-                    )
+                    raw_action = _action_to_raw_action(self._model_action_space, action)
                     targets.append((action, raw_action, prob))
             else:
-                raise ActionSpaceNotSupported(self.model.action_space())
+                raise ActionSpaceNotSupported(self._model_action_space)
+        else:
+            raise EnumValueNotFound(self.target, AttributationTarget)
 
         inputs_all = []
         if self._model_recurrent:
@@ -234,7 +249,7 @@ class AttributationTrajectoryIterator(abc.Iterator):
         targets_all = []
 
         for _, target, _ in targets:
-            if isinstance(self.model.action_space(), gym.spaces.Discrete):
+            if isinstance(self._model_action_space, gym.spaces.Discrete):
                 inputs_for_target = inputs
                 if self._model_recurrent:
                     states_for_target = state
@@ -242,9 +257,9 @@ class AttributationTrajectoryIterator(abc.Iterator):
                 targets_for_target = torch.tensor(
                     target, device=self.model.output_device(), dtype=torch.long
                 ).unsqueeze(dim=0)
-            elif isinstance(self.model.action_space(), gym.spaces.MultiDiscrete):
+            elif isinstance(self._model_action_space, gym.spaces.MultiDiscrete):
                 num_sub_actions = _multi_discrete_actions_count(
-                    self.model.action_space()
+                    self._model_action_space
                 )
                 inputs_for_target = _extend_batch_dim(inputs, num_sub_actions)
                 if self._model_recurrent:
@@ -254,7 +269,7 @@ class AttributationTrajectoryIterator(abc.Iterator):
                     target, device=self.model.output_device(), dtype=torch.long
                 )
             else:
-                raise ActionSpaceNotSupported(self.model.action_space())
+                raise ActionSpaceNotSupported(self._model_action_space)
             inputs_all.append(inputs_for_target)
             if self._model_recurrent:
                 states_all.append(states_for_target)
@@ -264,17 +279,20 @@ class AttributationTrajectoryIterator(abc.Iterator):
         inputs_batch = torch.cat(inputs_all, dim=0)
         if self._model_recurrent:
             states_batch = torch.cat(states_all, dim=0)
+            state_baselines_batch = torch.zeros_like(states_batch)
         else:
             states_batch = None
+            state_baselines_batch = None
         baselines_batch = torch.cat(baselines_all, dim=0)
         targets_batch = torch.cat(targets_all, dim=0)
         actions = [action for action, _, _ in targets]
         action_probs = [prob for _, _, prob in targets]
 
         return TimestepAttributationBatch(
-            inputs=inputs_batch,
-            state=states_batch,
-            baselines=baselines_batch,
+            input=inputs_batch,
+            hs=states_batch,
+            input_baselines=baselines_batch,
+            hs_baselines=state_baselines_batch,
             targets=targets_batch,
             actions=actions,
             action_probs=action_probs,
@@ -292,24 +310,27 @@ def attribute_trajectory(
     normalizer: AttributationNormalizer,
 ) -> Trajectory:
     obs_space = model.obs_space()
+    action_space = model.action_space()
     is_recurrent = isinstance(model, RecurrentModel)
     algo = IntegratedGradients(model)
     timesteps = []
     for batch in trajectory_it:
         if not is_recurrent:
             raw_attributation = algo.attribute(
-                batch.inputs, baselines=batch.baselines, target=batch.targets
+                batch.input, baselines=batch.input_baselines, target=batch.targets
             )
+            raw_hs_attr = None
         else:
-            raw_attributation = algo.attribute(
-                (batch.inputs, batch.state),
-                baselines=(batch.baselines, batch.state),
+            raw_attributation, raw_hs_attr = algo.attribute(
+                (batch.input, batch.hs),
+                baselines=(batch.input_baselines, batch.hs_baselines),
                 target=batch.targets,
             )
-            raw_attributation = raw_attributation[0]
         raw_attributation = raw_attributation.detach().cpu().numpy()
+        if raw_hs_attr is not None:
+            raw_hs_attr = raw_hs_attr.detach().cpu().numpy()
 
-        if isinstance(model.action_space(), gym.spaces.Discrete):
+        if isinstance(action_space, gym.spaces.Discrete):
             attributation = Attributation(
                 picked=DiscreteActionAttributation(
                     action=batch.actions[0],
@@ -318,6 +339,10 @@ def attribute_trajectory(
                     normalized=normalizer.transform(
                         unpack_array(raw_attributation[0], obs_space)
                     ),
+                    hs_raw=raw_hs_attr[0] if is_recurrent else None,
+                    hs_normalized=normalizer.transform_only(raw_hs_attr[0])
+                    if is_recurrent
+                    else None,
                 ),
                 top=[
                     DiscreteActionAttributation(
@@ -327,16 +352,27 @@ def attribute_trajectory(
                         normalized=normalizer.transform(
                             unpack_array(raw_attributation[i], obs_space)
                         ),
+                        hs_raw=raw_hs_attr[i] if is_recurrent else None,
+                        hs_normalized=normalizer.transform_only(raw_hs_attr[i])
+                        if is_recurrent
+                        else None,
                     )
                     for i in range(1, len(batch.actions))
                 ],
             )
-        elif isinstance(model.action_space(), gym.spaces.MultiDiscrete):
-            num_sub_actions = _multi_discrete_actions_count(model.action_space())
+        elif isinstance(action_space, gym.spaces.MultiDiscrete):
+            num_sub_actions = _multi_discrete_actions_count(action_space)
             grouped_attributation = [
                 raw_attributation[i : i + num_sub_actions]
                 for i in range(0, raw_attributation.shape[0], num_sub_actions)
             ]
+            if is_recurrent:
+                grouped_hs_attributation = [
+                    raw_hs_attr[i : i + num_sub_actions]
+                    for i in range(0, raw_hs_attr.shape[0], num_sub_actions)
+                ]
+            else:
+                grouped_hs_attributation = None
 
             attributation = Attributation(
                 picked=MultiDiscreteActionAttributation(
@@ -352,6 +388,17 @@ def attribute_trajectory(
                         )
                         for j in range(num_sub_actions)
                     ],
+                    hs_raw=[
+                        grouped_hs_attributation[0][j] for j in range(num_sub_actions)
+                    ]
+                    if is_recurrent
+                    else None,
+                    hs_normalized=[
+                        normalizer.transform_only(grouped_hs_attributation[0][j])
+                        for j in range(num_sub_actions)
+                    ]
+                    if is_recurrent
+                    else None,
                 ),
                 top=[
                     MultiDiscreteActionAttributation(
@@ -367,12 +414,24 @@ def attribute_trajectory(
                             )
                             for j in range(num_sub_actions)
                         ],
+                        hs_raw=[
+                            grouped_hs_attributation[i][j]
+                            for j in range(num_sub_actions)
+                        ]
+                        if is_recurrent
+                        else None,
+                        hs_normalized=[
+                            normalizer.transform_only(grouped_hs_attributation[i][j])
+                            for j in range(num_sub_actions)
+                        ]
+                        if is_recurrent
+                        else None,
                     )
                     for i in range(1, len(batch.actions))
                 ],
             )
         else:
-            raise ActionSpaceNotSupported(model.action_space())
+            raise ActionSpaceNotSupported(action_space)
 
         timesteps.append(replace(batch.timestep, attributations=attributation))
 
