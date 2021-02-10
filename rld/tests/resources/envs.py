@@ -80,13 +80,13 @@ class DictObsTupleActionEnv(BaseEnv):
 ALL_ENVS = [
     BoxObsDiscreteActionEnv,
     BoxObsMultiDiscreteActionEnv,
-    # BoxObsTupleActionEnv,
+    BoxObsTupleActionEnv,
     ImageObsDiscreteActionEnv,
     ImageObsMultiDiscreteActionEnv,
-    # ImageObsTupleActionEnv,
+    ImageObsTupleActionEnv,
     DictObsDiscreteActionEnv,
     DictObsMultiDiscreteActionEnv,
-    # DictObsTupleActionEnv,
+    DictObsTupleActionEnv,
 ]
 
 
