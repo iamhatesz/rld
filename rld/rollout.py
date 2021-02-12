@@ -94,31 +94,6 @@ class MultiDiscreteActionAttributation(ActionAttributation):
         return self.raw[index]
 
 
-# @dataclass
-# class TupleActionAttributation(ActionAttributation):
-#     raw: Sequence[AttributationLike]
-#     normalized: Sequence[AttributationLike]
-#
-#     def is_complied(self, obs_space: gym.Space) -> bool:
-#         obs_space = remove_value_constraints_from_space(obs_space)
-#         return all(
-#             [obs_space.contains(self.space(i)) for i in range(self.num_spaces())]
-#         )
-#
-#     def map(
-#         self, fn: Callable[[AttributationLike], AttributationLike]
-#     ) -> ActionAttributation:
-#         return TupleActionAttributation(
-#             [fn(self.space(i)) for i in range(self.num_spaces())]
-#         )
-#
-#     def num_spaces(self) -> int:
-#         return len(self.data)
-#
-#     def space(self, index: int) -> AttributationLike:
-#         return self.data[index]
-
-
 @dataclass
 class Timestep:
     obs: ObsLike

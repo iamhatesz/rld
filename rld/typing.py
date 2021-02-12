@@ -1,5 +1,6 @@
 from typing import Union, Sequence, Callable, Dict, List
 
+import gym
 import numpy as np
 import torch
 
@@ -31,3 +32,5 @@ AttributationLikeStrict = np.ndarray
 AttributationBatchLike = Sequence[AttributationLike]
 
 BaselineBuilder = Callable[[ObsLike], np.ndarray]
+
+MultiDiscreteAsTuple = gym.spaces.Tuple

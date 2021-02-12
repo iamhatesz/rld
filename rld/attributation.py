@@ -30,6 +30,7 @@ from rld.typing import (
     HiddenStateTensor,
     AttributationLikeStrict,
     ObsTensorStrict,
+    MultiDiscreteAsTuple,
 )
 
 
@@ -149,6 +150,9 @@ class AttributationTrajectoryIterator(abc.Iterator):
             HiddenStateTensor
         ] = self.model.initial_state() if self._model_recurrent else None
 
+        if isinstance(self._model_action_space, gym.spaces.Tuple):
+            _validate_multi_discrete_tuple_action_space(self._model_action_space)
+
     @torch.no_grad()
     def __next__(self) -> TimestepAttributationBatch:
         timestep = next(self._it)
@@ -180,10 +184,16 @@ class AttributationTrajectoryIterator(abc.Iterator):
 
         if isinstance(self._model_action_space, gym.spaces.Discrete):
             probs = torch.softmax(logits, dim=-1)
-        elif isinstance(self._model_action_space, gym.spaces.MultiDiscrete):
-            probs = _multicategorical_softmax(
-                logits, list(self.model.action_space().nvec)
-            )
+        elif isinstance(
+            self._model_action_space, (gym.spaces.MultiDiscrete, MultiDiscreteAsTuple)
+        ):
+            subs = _multi_discrete_action_sizes(self._model_action_space)
+            probs = _multicategorical_softmax(logits, subs)
+        # elif isinstance(self._model_action_space, gym.spaces.Tuple):
+        #     _validate_tuple_action_space(self._model_action_space)
+        #     probs = _multicategorical_softmax(
+        #         logits, list(sub_space.n for sub_space in self._model_action_space.spaces)
+        #     )
         else:
             raise ActionSpaceNotSupported(self._model_action_space)
 
@@ -196,7 +206,9 @@ class AttributationTrajectoryIterator(abc.Iterator):
 
         if isinstance(self._model_action_space, gym.spaces.Discrete):
             prob_of_picked_action = probs[picked_action].item()
-        elif isinstance(self._model_action_space, gym.spaces.MultiDiscrete):
+        elif isinstance(
+            self._model_action_space, (gym.spaces.MultiDiscrete, MultiDiscreteAsTuple)
+        ):
             prob_of_picked_action = (
                 torch.stack([probs[s] for s in raw_picked_action]).prod().item()
             )
@@ -224,7 +236,10 @@ class AttributationTrajectoryIterator(abc.Iterator):
                     raw_action = _action_to_raw_action(self._model_action_space, action)
                     prob = prob.item()
                     targets.append((action, raw_action, prob))
-            elif isinstance(self._model_action_space, gym.spaces.MultiDiscrete):
+            elif isinstance(
+                self._model_action_space,
+                (gym.spaces.MultiDiscrete, MultiDiscreteAsTuple),
+            ):
                 # Extract probs for each sub-action
                 subs_probs = _extract_multi_discrete_action_probs(
                     self._model_action_space, probs
@@ -257,7 +272,10 @@ class AttributationTrajectoryIterator(abc.Iterator):
                 targets_for_target = torch.tensor(
                     target, device=self.model.output_device(), dtype=torch.long
                 ).unsqueeze(dim=0)
-            elif isinstance(self._model_action_space, gym.spaces.MultiDiscrete):
+            elif isinstance(
+                self._model_action_space,
+                (gym.spaces.MultiDiscrete, MultiDiscreteAsTuple),
+            ):
                 num_sub_actions = _multi_discrete_actions_count(
                     self._model_action_space
                 )
@@ -360,7 +378,7 @@ def attribute_trajectory(
                     for i in range(1, len(batch.actions))
                 ],
             )
-        elif isinstance(action_space, gym.spaces.MultiDiscrete):
+        elif isinstance(action_space, (gym.spaces.MultiDiscrete, MultiDiscreteAsTuple)):
             num_sub_actions = _multi_discrete_actions_count(action_space)
             grouped_attributation = [
                 raw_attributation[i : i + num_sub_actions]
@@ -448,19 +466,36 @@ def _extend_batch_dim(t: torch.Tensor, new_batch_dim: int) -> torch.Tensor:
     return t.repeat(repeat_shape)
 
 
-def _multi_discrete_actions_count(action_space: gym.spaces.MultiDiscrete) -> int:
-    return len(action_space.nvec)
+def _multi_discrete_action_sizes(
+    space: Union[gym.spaces.MultiDiscrete, MultiDiscreteAsTuple]
+) -> List[int]:
+    if isinstance(space, gym.spaces.MultiDiscrete):
+        return list(space.nvec)
+    else:
+        return [sub_space.n for sub_space in space.spaces]
 
 
-def _total_multi_discrete_actions(action_space: gym.spaces.MultiDiscrete) -> int:
-    return reduce(operator.mul, action_space.nvec)
+def _multi_discrete_actions_count(
+    action_space: Union[gym.spaces.MultiDiscrete, MultiDiscreteAsTuple]
+) -> int:
+    if isinstance(action_space, gym.spaces.MultiDiscrete):
+        return len(action_space.nvec)
+    else:
+        return len(action_space.spaces)
+
+
+def _total_multi_discrete_actions(
+    action_space: Union[gym.spaces.MultiDiscrete, MultiDiscreteAsTuple]
+) -> int:
+    discrete_actions = _multi_discrete_action_sizes(action_space)
+    return reduce(operator.mul, discrete_actions)
 
 
 def _extract_multi_discrete_action_probs(
     action_space: gym.spaces.MultiDiscrete, probs: torch.Tensor
 ) -> List[torch.Tensor]:
     # Extract sizes of each dimension (e.g. [4, 2, 3])
-    subs = action_space.nvec
+    subs = _multi_discrete_action_sizes(action_space)
     # Accumulate sizes to calculate offsets (e.g. [0, 4, 6, 9])
     # TODO Use initial=0 when moved to Python 3.8
     offsets = [0] + list(accumulate(subs, operator.add))[:-1]
@@ -480,9 +515,9 @@ def _sort_multi_discrete_action_probs(
 def _action_to_raw_action(action_space: gym.Space, action: ActionLike) -> ActionLike:
     if isinstance(action_space, gym.spaces.Discrete):
         return action
-    elif isinstance(action_space, gym.spaces.MultiDiscrete):
+    elif isinstance(action_space, (gym.spaces.MultiDiscrete, MultiDiscreteAsTuple)):
         # Extract sizes of each dimension (e.g. [4, 2, 3])
-        subs = action_space.nvec
+        subs = _multi_discrete_action_sizes(action_space)
         # Accumulate sizes to calculate offsets (e.g. [0, 4, 6, 9])
         # TODO Use initial=0 when moved to Python 3.8
         offsets = [0] + list(accumulate(subs, operator.add))[:-1]
@@ -500,3 +535,11 @@ def _multicategorical_softmax(t: torch.Tensor, sizes: List[int]) -> torch.Tensor
         )
         offset += sub_space_size
     return probs
+
+
+def _validate_multi_discrete_tuple_action_space(space: gym.spaces.Tuple):
+    for space in space.spaces:
+        if not isinstance(space, gym.spaces.Discrete):
+            raise ValueError(
+                "Only a flat `Tuple` spaces with `Discrete` subspaces are supported."
+            )
