@@ -189,11 +189,6 @@ class AttributationTrajectoryIterator(abc.Iterator):
         ):
             subs = _multi_discrete_action_sizes(self._model_action_space)
             probs = _multicategorical_softmax(logits, subs)
-        # elif isinstance(self._model_action_space, gym.spaces.Tuple):
-        #     _validate_tuple_action_space(self._model_action_space)
-        #     probs = _multicategorical_softmax(
-        #         logits, list(sub_space.n for sub_space in self._model_action_space.spaces)
-        #     )
         else:
             raise ActionSpaceNotSupported(self._model_action_space)
 
