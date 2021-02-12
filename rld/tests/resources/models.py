@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Optional
+from typing import Optional, Union, List
 
 import torch
 import torch.nn as nn
@@ -13,8 +13,9 @@ from rld.tests.resources.spaces import (
     MULTI_DISCRETE_ACTION_SPACE,
     IMAGE_OBS_SPACE,
     DICT_OBS_SPACE,
+    TUPLE_ACTION_SPACE,
 )
-from rld.typing import HiddenState, ObsTensorStrict, ObsTensorLike
+from rld.typing import HiddenStateTensor, ObsTensorStrict, ObsTensorLike
 
 
 class ObsMixin:
@@ -29,7 +30,12 @@ class ObsMixin:
 
 
 class ActionMixin:
-    def init_head(self) -> nn.Module:
+    def init_head(self) -> Union[nn.Module, List[nn.Module]]:
+        raise NotImplementedError
+
+    def call_head(
+        self, hidden: torch.Tensor
+    ) -> Union[torch.Tensor, List[torch.Tensor]]:
         raise NotImplementedError
 
 
@@ -46,7 +52,11 @@ class BaseModel(Model, ObsMixin, ActionMixin, ABC):
         obs = unpack_tensor(obs_flat, self.obs_space())
         obs = self.preprocess_obs(obs)
         x = F.relu(self.call_hidden(obs))
-        x = self.head(x)
+        x = self.call_head(x)
+
+        if isinstance(x, list):
+            x = torch.cat(x, dim=-1)
+
         return x
 
     def input_device(self) -> torch.device:
@@ -65,9 +75,11 @@ class BaseRecurrentModel(RecurrentModel, ObsMixin, ActionMixin, ABC):
         )
         self.head = self.init_head()
 
-        self._last_state: Optional[HiddenState] = None
+        self._last_state: Optional[HiddenStateTensor] = None
 
-    def forward(self, obs_flat: ObsTensorStrict, state: HiddenState) -> torch.Tensor:
+    def forward(
+        self, obs_flat: ObsTensorStrict, state: HiddenStateTensor
+    ) -> torch.Tensor:
         obs = unpack_tensor(obs_flat, self.obs_space())
         obs = self.preprocess_obs(obs)
 
@@ -79,7 +91,10 @@ class BaseRecurrentModel(RecurrentModel, ObsMixin, ActionMixin, ABC):
         state = self.reshape_to_store(torch.stack(state))
 
         x = x.squeeze(dim=1)
-        x = self.head(x)
+        x = self.call_head(x)
+
+        if isinstance(x, list):
+            x = torch.cat(x, dim=-1)
 
         self._last_state = state
         return x
@@ -87,14 +102,14 @@ class BaseRecurrentModel(RecurrentModel, ObsMixin, ActionMixin, ABC):
     def input_device(self) -> torch.device:
         return torch.device("cpu")
 
-    def initial_state(self) -> HiddenState:
+    def initial_state(self) -> HiddenStateTensor:
         return torch.zeros(
             (1, 2, 1, self.NUM_HIDDEN_NEURONS),
             dtype=torch.float32,
             device=self.input_device(),
         )
 
-    def last_output_state(self) -> HiddenState:
+    def last_output_state(self) -> HiddenStateTensor:
         if self._last_state is None:
             raise RuntimeError(
                 "Trying to get last output hidden state without calling "
@@ -162,6 +177,9 @@ class DiscreteActionMixin(ActionMixin):
     def init_head(self: BaseModel) -> nn.Module:
         return nn.Linear(self.NUM_HIDDEN_NEURONS, self.action_space().n)
 
+    def call_head(self: BaseModel, hidden: torch.Tensor) -> torch.Tensor:
+        return self.head(hidden)
+
 
 class MultiDiscreteActionMixin(ActionMixin):
     def action_space(self) -> Space:
@@ -170,12 +188,33 @@ class MultiDiscreteActionMixin(ActionMixin):
     def init_head(self: BaseModel) -> nn.Module:
         return nn.Linear(self.NUM_HIDDEN_NEURONS, sum(self.action_space().nvec))
 
+    def call_head(self: BaseModel, hidden: torch.Tensor) -> torch.Tensor:
+        return self.head(hidden)
+
+
+class TupleActionMixin(ActionMixin):
+    def action_space(self) -> Space:
+        return TUPLE_ACTION_SPACE
+
+    def init_head(self: BaseModel) -> List[nn.Module]:
+        return [
+            nn.Linear(self.NUM_HIDDEN_NEURONS, sub_space.n)
+            for sub_space in self.action_space().spaces
+        ]
+
+    def call_head(self: BaseModel, hidden: torch.Tensor) -> List[torch.Tensor]:
+        return [head(hidden) for head in self.head]
+
 
 class BoxObsDiscreteActionModel(BoxObsMixin, DiscreteActionMixin, BaseModel):
     pass
 
 
 class BoxObsMultiDiscreteActionModel(BoxObsMixin, MultiDiscreteActionMixin, BaseModel):
+    pass
+
+
+class BoxObsTupleActionModel(BoxObsMixin, TupleActionMixin, BaseModel):
     pass
 
 
@@ -189,6 +228,10 @@ class ImageObsMultiDiscreteActionModel(
     pass
 
 
+class ImageObsTupleActionModel(BoxObsMixin, TupleActionMixin, BaseModel):
+    pass
+
+
 class DictObsDiscreteActionModel(DictObxMixin, DiscreteActionMixin, BaseModel):
     pass
 
@@ -196,6 +239,10 @@ class DictObsDiscreteActionModel(DictObxMixin, DiscreteActionMixin, BaseModel):
 class DictObsMultiDiscreteActionModel(
     DictObxMixin, MultiDiscreteActionMixin, BaseModel
 ):
+    pass
+
+
+class DictObsTupleActionModel(DictObxMixin, TupleActionMixin, BaseModel):
     pass
 
 
@@ -207,6 +254,12 @@ class BoxObsDiscreteActionRecurrentModel(
 
 class BoxObsMultiDiscreteActionRecurrentModel(
     BoxObsMixin, MultiDiscreteActionMixin, BaseRecurrentModel
+):
+    pass
+
+
+class BoxObsTupleActionRecurrentModel(
+    BoxObsMixin, TupleActionMixin, BaseRecurrentModel
 ):
     pass
 
@@ -223,6 +276,12 @@ class ImageObsMultiDiscreteActionRecurrentModel(
     pass
 
 
+class ImageObsTupleActionRecurrentModel(
+    ImageObsMixin, TupleActionMixin, BaseRecurrentModel
+):
+    pass
+
+
 class DictObsDiscreteActionRecurrentModel(
     DictObxMixin, DiscreteActionMixin, BaseRecurrentModel
 ):
@@ -235,18 +294,30 @@ class DictObsMultiDiscreteActionRecurrentModel(
     pass
 
 
+class DictObsTupleActionRecurrentModel(
+    DictObxMixin, TupleActionMixin, BaseRecurrentModel
+):
+    pass
+
+
 ALL_MODELS = [
     BoxObsDiscreteActionModel,
     BoxObsMultiDiscreteActionModel,
+    BoxObsTupleActionModel,
     ImageObsDiscreteActionModel,
     ImageObsMultiDiscreteActionModel,
+    ImageObsTupleActionModel,
     DictObsDiscreteActionModel,
     DictObsMultiDiscreteActionModel,
+    DictObsTupleActionModel,
     # Recurrent models
     BoxObsDiscreteActionRecurrentModel,
     BoxObsMultiDiscreteActionRecurrentModel,
+    BoxObsTupleActionRecurrentModel,
     ImageObsDiscreteActionRecurrentModel,
     ImageObsMultiDiscreteActionRecurrentModel,
+    ImageObsTupleActionRecurrentModel,
     DictObsDiscreteActionRecurrentModel,
     DictObsMultiDiscreteActionRecurrentModel,
+    DictObsTupleActionRecurrentModel,
 ]

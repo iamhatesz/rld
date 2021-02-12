@@ -1,5 +1,6 @@
 from typing import Union, Sequence, Callable, Dict, List
 
+import gym
 import numpy as np
 import torch
 
@@ -23,10 +24,13 @@ InfoValueLike = Union[str, int, float, bool, np.ndarray]
 InfoLike = Dict[str, InfoValueLike]
 InfoBatchLike = Sequence[InfoLike]
 
-HiddenState = torch.Tensor
+HiddenState = np.ndarray
+HiddenStateTensor = torch.Tensor
 
 AttributationLike = Union[np.ndarray, Dict[str, np.ndarray]]
-AttributationLikeStrict = torch.Tensor
+AttributationLikeStrict = np.ndarray
 AttributationBatchLike = Sequence[AttributationLike]
 
 BaselineBuilder = Callable[[ObsLike], np.ndarray]
+
+MultiDiscreteAsTuple = gym.spaces.Tuple

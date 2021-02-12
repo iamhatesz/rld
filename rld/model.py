@@ -17,7 +17,7 @@ from rld.typing import (
     ObsLikeStrict,
     ObsTensorLike,
     ObsTensorStrict,
-    HiddenState,
+    HiddenStateTensor,
 )
 
 
@@ -40,19 +40,19 @@ class Model(ABC, nn.Module):
 
 
 class RecurrentModel(Model, ABC):
-    def initial_state(self) -> HiddenState:
+    def initial_state(self) -> HiddenStateTensor:
         """
         [B x 2 x 1 x CELL_SIZE]
         """
         raise NotImplementedError
 
-    def last_output_state(self) -> HiddenState:
+    def last_output_state(self) -> HiddenStateTensor:
         raise NotImplementedError
 
-    def reshape_to_torch(self, state: HiddenState) -> HiddenState:
+    def reshape_to_torch(self, state: HiddenStateTensor) -> HiddenStateTensor:
         return state.permute((1, 2, 0, 3))
 
-    def reshape_to_store(self, state: HiddenState) -> HiddenState:
+    def reshape_to_store(self, state: HiddenStateTensor) -> HiddenStateTensor:
         return state.permute((2, 0, 1, 3))
 
 
@@ -102,9 +102,9 @@ class RayRecurrentModelWrapper(RecurrentModel, RayModelWrapper):
         super().__init__(model)
         self.lstm_cell_size = lstm_cell_size
 
-        self._last_state: Optional[HiddenState] = None
+        self._last_state: Optional[HiddenStateTensor] = None
 
-    def forward(self, obs_flat: ObsTensorStrict, state: HiddenState):
+    def forward(self, obs_flat: ObsTensorStrict, state: HiddenStateTensor):
         if isinstance(self.obs_space(), Box):
             # We need to unpack e.g. image-like observation,
             # as RLlib doesn't flatten them into 1D vectors
@@ -127,14 +127,14 @@ class RayRecurrentModelWrapper(RecurrentModel, RayModelWrapper):
 
         return logits
 
-    def initial_state(self) -> HiddenState:
+    def initial_state(self) -> HiddenStateTensor:
         initial_state = [
             torch.tensor(s, device=self.input_device())
             for s in self.model.get_initial_state()
         ]
         return torch.stack(initial_state).unsqueeze(dim=0).unsqueeze(dim=2)
 
-    def last_output_state(self) -> HiddenState:
+    def last_output_state(self) -> HiddenStateTensor:
         if self._last_state is None:
             raise RuntimeError(
                 "Trying to get last output hidden state without calling "
@@ -142,11 +142,11 @@ class RayRecurrentModelWrapper(RecurrentModel, RayModelWrapper):
             )
         return self._last_state
 
-    def reshape_to_torch(self, state: HiddenState) -> HiddenState:
+    def reshape_to_torch(self, state: HiddenStateTensor) -> HiddenStateTensor:
         permuted = super().reshape_to_torch(state)
         return permuted.squeeze(dim=1)
 
-    def reshape_to_store(self, state: HiddenState) -> HiddenState:
+    def reshape_to_store(self, state: HiddenStateTensor) -> HiddenStateTensor:
         return super().reshape_to_store(state.unsqueeze(dim=1))
 
 
